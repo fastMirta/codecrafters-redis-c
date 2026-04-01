@@ -10,15 +10,9 @@
 
 const char *response = "+PONG\r\n";
 
-int main()
-{
-	// Disable output buffering
+int main(){
 	setbuf(stdout, NULL);
 	setbuf(stderr, NULL);
-
-	char word[] = "ping 1 ping 2 ping 3";
-	printf("pingCounter: %d", pingCounter(word, sizeof(word)));
-	printf("Logs from your program will appear here!\n");
 
 	int server_fd, client_addr_len;
 	struct sockaddr_in client_addr;
@@ -62,28 +56,26 @@ int main()
 	printf("Client connected\n");
 
 	int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_addr_len);
-	if (client_fd == -1)
-	{
+	if (client_fd == -1){
 		printf("Accept failed: %s \n", strerror(errno));
 		close(server_fd);
 		return 1;
 	}
 
 	char buffer[1000];
-	int received = recv(server_fd, buffer, sizeof(buffer), 0);
-	int *counter = 0;
-	if (received == -1 || countWord(buffer, "PING", *counter) == 1)
-	{
-		printf("Didnt recieve data");
-	}
-	else
-	{
-		for (int i = 0; i < counter; i++)
+	while (1){
+		int received = recv(client_fd, buffer, sizeof(buffer), 0);
+
+		if (received <= 0)
 		{
-			if (send(client_fd, response, strlen(response), 0) == -1)
-			{
-				printf("Send failed: %s \n", strerror(errno));
-			}
+
+			break;
+		}
+
+		if (send(client_fd, response, strlen(response), 0) == -1)
+		{
+
+			printf("Send failed: %s \n", strerror(errno));
 		}
 	}
 
@@ -93,8 +85,7 @@ int main()
 	return 0;
 }
 
-int countWord(const char *str, const char *target, int *counter)
-{
+int countWord(const char *str, const char *target, int *counter){
 	if (!str || !target || !counter || *target == '\0')
 		return 1;
 
@@ -110,8 +101,7 @@ int countWord(const char *str, const char *target, int *counter)
 	return (*counter == 0) ? 1 : 0;
 }
 
-void toUpper(char *str)
-{
+void toUpper(char *str){
 	for (int i = 0; str[i]; i++)
 		str[i] = toupper((unsigned char)str[i]);
 }
