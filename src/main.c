@@ -6,15 +6,18 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
-#include <ctype.h>
+#include <poll.h>
+
+#define MAX_CLIENTS 100
 
 const char *response = "+PONG\r\n";
 
 int main(){
 	setbuf(stdout, NULL);
-	setbuf(stderr, NULL);
+	setbuf(stderr, NULL);	
 
-	int server_fd, client_addr_len;
+	struct pollfd watch_list[MAX_CLIENTS];
+	int server_fd, client_addr_len, active_fds;
 	struct sockaddr_in client_addr;
 
 	server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -54,32 +57,46 @@ int main(){
 	client_addr_len = sizeof(client_addr);
 
 	printf("Client connected\n");
-
-	int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_addr_len);
-	if (client_fd == -1){
-		printf("Accept failed: %s \n", strerror(errno));
-		close(server_fd);
-		return 1;
+	watch_list[0].fd = server_fd;
+	watch_list[0].events = POLLIN;
+	
+	//Implementation of event loop Hopefuly will work
+	while(1){
+		poll(watch_list, active_fds, -1);
+		for (int i = 0; i < active_fds; i++) {
+            
+            //Check if this specific socket have an event?
+            if (watch_list[i].revents & POLLIN) {
+                
+                if (i == 0) {
+                    //Creating new client
+                    int new_client_fd = accept(server_fd, NULL, NULL);
+                    
+                    
+                    watch_list[active_fds].fd = new_client_fd;
+                    watch_list[active_fds].events = POLLIN;
+                    active_fds++;
+                    printf("New client joined the loop!\n");
+                } 
+                else {
+                    //EXISTING CLIENT SENT DATA
+                    char buffer[1024];
+                    int bytes_received = recv(watch_list[i].fd, buffer, sizeof(buffer), 0);
+                    
+                    if (bytes_received <= 0) {
+                        //Removing client from watch list
+                        close(watch_list[i].fd);
+                        watch_list[i] = watch_list[active_fds - 1];
+                        active_fds--;
+                    } else {
+                        send(watch_list[i].fd, "+PONG\r\n", 7, 0);
+                    }
+                }
+            }
+        }
 	}
 
-	char buffer[1000];
-	while (1){
-		int received = recv(client_fd, buffer, sizeof(buffer), 0);
 
-		if (received <= 0)
-		{
-
-			break;
-		}
-
-		if (send(client_fd, response, strlen(response), 0) == -1)
-		{
-
-			printf("Send failed: %s \n", strerror(errno));
-		}
-	}
-
-	close(client_fd);
 	close(server_fd);
 
 	return 0;
