@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <poll.h>
+#include <ctype.h>
 
 #define MAX_CLIENTS 100
 
@@ -17,7 +18,7 @@ int main(){
 	setbuf(stderr, NULL);	
 
 	struct pollfd watch_list[MAX_CLIENTS];
-	int server_fd, client_addr_len, active_fds;
+	int server_fd, client_addr_len;
 	struct sockaddr_in client_addr;
 
 	server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -59,7 +60,7 @@ int main(){
 	printf("Client connected\n");
 	watch_list[0].fd = server_fd;
 	watch_list[0].events = POLLIN;
-	
+	int active_fds = 1;
 	//Implementation of event loop Hopefuly will work
 	while(1){
 		poll(watch_list, active_fds, -1);
