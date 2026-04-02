@@ -11,7 +11,7 @@ void toUpper(char *str){
 
 //TODO: maybe change type to int and return 0 for work 1/-1 for didnt
 int parse(char *client_input, RespRequest *request){
-    if(client_input == NULL){return;}
+    if(client_input == NULL){return 1;}
      /**Redis request: 
         *3\r\n
         $3\r\n
@@ -34,9 +34,10 @@ int parse(char *client_input, RespRequest *request){
     //*(firstLine + 1);
 
     //Break parser if the first line doesnt start with a prefix or doesnt start with arrays prefix
-    if(getPrefix(firstLine, prefix) != 0 || *prefix != '*'){return;}
+    if(getPrefix(firstLine, prefix) != 0 || *prefix != '*'){return 1;}
 
     int loopLen = atoi(firstLinePtr + 1);
+    request->argc = loopLen - 1;
 
     REDIS_CMDS currentMethod;
     //jumping to the next line
@@ -44,17 +45,24 @@ int parse(char *client_input, RespRequest *request){
     //char *secondLine = malloc(1024, sizeof(char));
     for(int i = 0; i < loopLen; i++){
         firstLine = getLine(client_input);
-        if(getPrefix(firstLine, prefix) != 0){return;}
+        if(getPrefix(firstLine, prefix) != 0){return 1;}
 
         client_input = client_input + strlen(firstLine) + 2;
         char *secondLine = getLine(client_input);
         int nextLineLen = atoi(firstLine + 1);
-        if(strlen(secondLine) != nextLineLen){return;}
+        if(strlen(secondLine) != nextLineLen){return 1;}
         
-
-        
-        client_input = client_input + strlen(firstLine) + 2;
+        //Gets the 
+        if(i == 0){
+            request->command = findRedisCmd(secondLine, strlen(secondLine) - 2);
+        }
+        else{
+            request->args[i-1] = secondLine;
+        }
+        client_input = client_input + strlen(secondLine) + 2;
     }
+    if(*client_input != '\0'){return 1;}
+    
     /**
      * *2\r\n
      * $4\r\n
@@ -64,7 +72,7 @@ int parse(char *client_input, RespRequest *request){
      */
 
     free(firstLinePtr);
-    
+    return 0;
     
 }
 /**

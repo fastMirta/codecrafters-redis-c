@@ -91,12 +91,15 @@ int main(){
                         watch_list[i] = watch_list[active_fds - 1];
                         active_fds--;
                     } else {
-						RespRequest *request = malloc(sizeof(RespRequest));
-						parse(buffer, request);
-						if(request->method == ECHO){
-							send(watch_list[i].fd, "+PONG\r\n", 7, 0);
+						RespRequest request;
+						parse(buffer, &request);
+						if(request.command == ECHO){
+							char response[1024];
+							snprintf(response, sizeof(response), "$%d\r\n%s\r\n", (int)strlen(request.args[0]), request.args[0]);
+							send(watch_list[i].fd, response, strlen(response), 0);
 						}
-                        send(watch_list[i].fd, "+PONG\r\n", 7, 0);
+						else{send(watch_list[i].fd, "+PONG\r\n", 7, 0);}
+                        
                     }
                 }
             }

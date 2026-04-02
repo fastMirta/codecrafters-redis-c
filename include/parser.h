@@ -4,14 +4,14 @@
 
 
 typedef struct {
-    REDIS_CMDS method;
+    REDIS_CMDS command;
     char **args;          
     int argc; 
 } RespRequest;
 
 typedef enum  {
     UNKOWN,
-    
+
     //Utility cmds
     ECHO,
     PING,
