@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <poll.h>
 #include <ctype.h>
+#include <parser.h>
 
 #define MAX_CLIENTS 100
 
@@ -90,6 +91,11 @@ int main(){
                         watch_list[i] = watch_list[active_fds - 1];
                         active_fds--;
                     } else {
+						RespRequest *request = malloc(sizeof(RespRequest));
+						parse(buffer, request);
+						if(request->method == ECHO){
+							send(watch_list[i].fd, "+PONG\r\n", 7, 0);
+						}
                         send(watch_list[i].fd, "+PONG\r\n", 7, 0);
                     }
                 }
@@ -119,7 +125,3 @@ int countWord(const char *str, const char *target, int *counter){
 	return (*counter == 0) ? 1 : 0;
 }
 
-void toUpper(char *str){
-	for (int i = 0; str[i]; i++)
-		str[i] = toupper((unsigned char)str[i]);
-}
