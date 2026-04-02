@@ -41,7 +41,6 @@ int parse(char *client_input, RespRequest *request){
     int loopLen = atoi(firstLinePtr + 1);
     request->argc = loopLen - 1;
 
-    REDIS_CMDS currentMethod;
     //jumping to the next line
     client_input = client_input + strlen(firstLine) + 2;
     //char *secondLine = malloc(1024, sizeof(char));

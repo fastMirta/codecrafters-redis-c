@@ -3,11 +3,6 @@
 
 
 
-typedef struct {
-    REDIS_CMDS command;
-    char *args[16];          
-    int argc; 
-} RespRequest;
 
 typedef enum  {
     UNKOWN,
@@ -47,6 +42,12 @@ typedef enum  {
     SISMEMBER,
 
 } REDIS_CMDS;
+
+typedef struct {
+    REDIS_CMDS command;
+    char *args[16];          
+    int argc; 
+} RespRequest;
 
 REDIS_CMDS findRedisCmd(char *cmdName, int lineLength);
 int parse(char *client_input, RespRequest *request);
