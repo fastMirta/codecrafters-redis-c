@@ -1,7 +1,7 @@
 #include <stdlib.h>
-#include <utils.h>
+#include "utils.h"
 
-extern Entry *table[TABLE_SIZE];
+Entry *table[TABLE_SIZE] = {NULL};
 
 int hash(char *key) {
     int hash = 0;

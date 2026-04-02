@@ -4,7 +4,13 @@ project(codecrafters-redis)
 
 include_directories(include)
 
-file(GLOB_RECURSE SOURCE_FILES src/*.c src/*.h)
+set(SOURCE_FILES 
+    src/main.c 
+    src/parser.c 
+    src/handler.c
+    src/utils.c
+    
+)
 
 set(CMAKE_C_STANDARD 23) # Enable the C23 standard
 

@@ -8,8 +8,8 @@
 #include <unistd.h>
 #include <poll.h>
 #include <ctype.h>
-#include <parser.h>
-#include <handler.h>
+#include "parser.h"
+#include "handler.h"
 
 #define MAX_CLIENTS 100
 
@@ -73,7 +73,7 @@ int main(){
                 
                 if (i == 0) {
                     //Creating new client
-                    int new_client_fd = accept(server_fd, NULL, NULL);
+                    int new_client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_addr_len);
                     
                     
                     watch_list[active_fds].fd = new_client_fd;
@@ -83,19 +83,26 @@ int main(){
                 } 
                 else {
                     //EXISTING CLIENT SENT DATA
-                    char buffer[1024];
-                    int bytes_received = recv(watch_list[i].fd, buffer, sizeof(buffer), 0);
-                    
+                    char *buffer = calloc(1025, sizeof(char));
+                    int bytes_received = recv(watch_list[i].fd, buffer, 1024, 0);
+					
+
                     if (bytes_received <= 0) {
                         //Removing client from watch list
                         close(watch_list[i].fd);
                         watch_list[i] = watch_list[active_fds - 1];
                         active_fds--;
                     } else {
+						buffer[bytes_received] = '\0';
+						printWord(buffer); 
 						RespRequest request;
 						parse(buffer, &request);
-						if(handle(&request, watch_list[active_fds].fd) == 0){
+						printf("\n");
+						printf("\n");
+						printf("client I fd: %d", watch_list[i].fd);
+						if(handle(&request, watch_list[i].fd) == 0){
 							printf("Success");
+							printf("YAY");
 						}
                         
                     }
@@ -108,6 +115,12 @@ int main(){
 	close(server_fd);
 
 	return 0;
+}
+
+void printWord(char word[]){
+	for(int i = 0; i < strlen(word); i++){
+		printf("%c", word[i]);
+	}
 }
 
 int countWord(const char *str, const char *target, int *counter){

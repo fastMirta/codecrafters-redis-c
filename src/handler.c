@@ -1,31 +1,43 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <parser.h>
+#include "parser.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
-#include <utils.h>
+#include "utils.h"
 
 
-const char *ping_response = "+PONG\r\n";
+
 
 
 
 void handle_ping(int client_fd){
-    send(client_fd, ping_response, strlen(ping_response), 0);
+    const char *ping_response = "+PONG\r\n";
+    printf("Client fd: %d", client_fd);
+    if(send(client_fd, ping_response, strlen(ping_response), 0) != -1){
+        printf("SEND SUCCESS");
+    }
+    else{
+        printf("\n");
+        printf("SEND failed inside handle ping \n");
+    }
 }
 
 void handle_echo(RespRequest *req, int client_fd){
     char response[1024];
-    snprintf(response, sizeof(response), "$%zu\r\n%s\r\n", strlen(req->args[1]), req->args[1]);
+    snprintf(response, sizeof(response), "$%zu\r\n%s\r\n", strlen(req->args[0]), req->args[0]);
 	send(client_fd, response, strlen(response), 0);
 
 }
 
 void handle_set(RespRequest *req, int client_fd){
-    if(req->argc < 3){return;}
+    if(req->argc < 3){
+        printf("length smaller than 3");
+        return;
+    }
     store_set(req->args[0], req->args[1]);
+    send(client_fd, "+OK\r\n", 5, 0);
 }
 
 void handle_get(RespRequest *req, int client_fd) {
@@ -44,23 +56,26 @@ void handle_unkown(RespRequest *req, int client_fd){
 }
 
 int handle(RespRequest *req, int client_fd){
-    
+    printf("\n ENTERED HANDLER");
     /**    REDIS_CMDS command;
     char *args[16];          
     int argc;  
     */
-   
+    
     if(req == NULL){
+        printf("ERROR IN HANDLE");
         send(client_fd, "Request parsed is null", 22, 0);
         return 1;
     }
    
     if(req->command== ECHO){
         handle_echo(req, client_fd);
+        printf("ECHOED");
         return 0;
     }
     if(req->command == PING){
         handle_ping(client_fd);
+        printf("Pinged\n");
         return 0; 
     }
     if(req->command == AUTH){
@@ -75,10 +90,12 @@ int handle(RespRequest *req, int client_fd){
 
     //Core cmds
     if(req->command == SET){
+        printf("SET");
         handle_set(req, client_fd);
         return 0;
     }
     if(req->command == GET){
+        printf("GET");
         handle_get(req, client_fd);
         return 0; 
     }

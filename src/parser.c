@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <string.h>
-#include <parser.h>
+#include "parser.h"
 #include <ctype.h>
 #include <stdlib.h>
 //0 = success| 1 = failure
@@ -13,7 +13,11 @@ void toUpper(char *str){
 
 //TODO: maybe change type to int and return 0 for work 1/-1 for didnt
 int parse(char *client_input, RespRequest *request){
-    if(client_input == NULL){return 1;}
+    printf("ENTERED Parser");
+    if(client_input == NULL){
+        printf("Error");
+        return 1;
+    }
      /**Redis request: 
         *3\r\n
         $3\r\n
@@ -39,30 +43,41 @@ int parse(char *client_input, RespRequest *request){
     if(getPrefix(firstLine, prefix) != 0 || *prefix != '*'){return 1;}
 
     int loopLen = atoi(firstLinePtr + 1);
-    request->argc = loopLen - 1;
+    request->argc = loopLen;
 
     //jumping to the next line
     client_input = client_input + strlen(firstLine) + 2;
-    //char *secondLine = malloc(1024, sizeof(char));
     for(int i = 0; i < loopLen; i++){
+        printf("\n");
+        printf("Index: %d", i);
         firstLine = getLine(client_input);
         if(getPrefix(firstLine, prefix) != 0){return 1;}
 
         client_input = client_input + strlen(firstLine) + 2;
         char *secondLine = getLine(client_input);
+        printf("Second line: %s", secondLine);
+        printf("\n");
         int nextLineLen = atoi(firstLine + 1);
         if(strlen(secondLine) != nextLineLen){return 1;}
         
         //Finds the cmd
         if(i == 0){
-            request->command = findRedisCmd(secondLine, strlen(secondLine) - 2);
+            
+            char *secondLinewith2 = malloc(strlen(secondLine));
+            strncpy(secondLinewith2, secondLine, strlen(secondLine));
+            printf("second linessss: %s", secondLinewith2);
+            request->command = findRedisCmd(secondLine, strlen(secondLine));
         }
         else{
             request->args[i-1] = secondLine;
         }
         client_input = client_input + strlen(secondLine) + 2;
     }
-    if(*client_input != '\0'){return 1;}
+    
+    if(*client_input != '\0'){
+        printf("Another error\n");
+        return 1;
+    }
     
     /**
      * --SET--
@@ -86,6 +101,8 @@ int parse(char *client_input, RespRequest *request){
      * 
      * 
      */
+    printf("No error\n");
+    printf("%d", request->command);
 
     free(firstLinePtr);
     return 0;
