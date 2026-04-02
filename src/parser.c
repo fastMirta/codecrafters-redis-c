@@ -53,7 +53,7 @@ int parse(char *client_input, RespRequest *request){
         int nextLineLen = atoi(firstLine + 1);
         if(strlen(secondLine) != nextLineLen){return 1;}
         
-        //Gets the 
+        //Finds the cmd
         if(i == 0){
             request->command = findRedisCmd(secondLine, strlen(secondLine) - 2);
         }
@@ -65,11 +65,26 @@ int parse(char *client_input, RespRequest *request){
     if(*client_input != '\0'){return 1;}
     
     /**
+     * --SET--
+     * *5\r\n
+        $3\r\n
+        SET\r\n
+        $3\r\n
+        key\r\n
+        $5\r\n
+        value\r\n
+        $2\r\n
+        EX\r\n
+        $2\r\n
+        10\r\n
+     * 
      * *2\r\n
      * $4\r\n
      * ECHO\r\n
      * $11\r\n
      * Hello World\r\n
+     * 
+     * 
      */
 
     free(firstLinePtr);
