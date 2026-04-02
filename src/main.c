@@ -15,6 +15,12 @@
 
 const char *response = "+PONG\r\n";
 
+void printWord(char word[]){
+	for(int i = 0; i < strlen(word); i++){
+		printf("%c", word[i]);
+	}
+}
+
 int main(){
 	setbuf(stdout, NULL);
 	setbuf(stderr, NULL);	
@@ -117,11 +123,7 @@ int main(){
 	return 0;
 }
 
-void printWord(char word[]){
-	for(int i = 0; i < strlen(word); i++){
-		printf("%c", word[i]);
-	}
-}
+
 
 int countWord(const char *str, const char *target, int *counter){
 	if (!str || !target || !counter || *target == '\0')
