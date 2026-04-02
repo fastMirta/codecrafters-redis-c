@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <parser.h>
+#include <ctype.h>
+#include <stdlib.h>
 //0 = success| 1 = failure
 
 /**Changes all the characters of a given string to upper case */
