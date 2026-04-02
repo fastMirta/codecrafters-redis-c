@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <parser.h>
@@ -9,117 +10,10 @@
 
 const char *ping_response = "+PONG\r\n";
 
-int handle(RespRequest *req, int client_fd){
-    
-    /**    REDIS_CMDS command;
-    char *args[16];          
-    int argc;  
-    */
-   
-    if(req == NULL){
-        send(client_fd, "Request parsed is null", 22, 0);
-        return 1;
-    }
-   
-    if(strcmp(req->command, "ECHO") == 0){
-        handle_echo(req, client_fd);
-        return 0;
-    }
-    if(strcmp(req->command, "PING") == 0){
-        handle_ping(client_fd);
-        return 0; 
-    }
-    if(strcmp(req->command, "AUTH") == 0){
-        return 0; 
-    }
-    if(strcmp(req->command, "SELECT") == 0){
-        return 0; 
-    }
-    if(strcmp(req->command, "COMMAND") == 0){
-        return 0; 
-    }
-
-    //Core cmds
-    if(strcmp(req->command, "SET") == 0){
-        handle_set(req, client_fd);
-        return 0;
-    }
-    if(strcmp(req->command, "GET") == 0){
-        handle_get(req, client_fd);
-        return 0; 
-    }
-    if(strcmp(req->command, "DEL") == 0){
-        return 0; 
-    }
-    if(strcmp(req->command, "EXISTS") == 0){
-        return 0; 
-    }
-    if(strcmp(req->command, "EXPIRE") == 0){
-        return 0; 
-    }
-    if(strcmp(req->command, "TTL") == 0){
-        return 0;
-    }
-
-    //Cmds for strings and numbers
-    if(strcmp(req->command, "INCR") == 0){
-        return 0;
-    }
-    if(strcmp(req->command, "DECR") == 0){
-        return 0;
-    }
-    if(strcmp(req->command, "APPEND") == 0){
-        return 0;
-    }
-    if(strcmp(req->command, "STRLEN") == 0){
-        return 0;
-    }
-    if(strcmp(req->command, "MGET") == 0){
-        return 0;
-    }
-
-    //List cmds
-    if(strcmp(req->command, "HSET") == 0){
-        return 0;
-    }
-    if(strcmp(req->command, "HGET") == 0){
-        return 0;
-    }
-    if(strcmp(req->command, "HGETALL") == 0){
-        return 0;
-    }
-    if(strcmp(req->command, "HDEL") == 0){
-        return 0;
-    }
-
-    //Sets cmds
-    if(strcmp(req->command, "SADD") == 0){
-        return 0;
-    }
-    if(strcmp(req->command, "SREM") == 0){
-        return 0;
-    }
-    if(strcmp(req->command, "SMEMBERS") == 0){
-        return 0;
-    }
-    if(strcmp(req->command, "SISMEMBER") == 0){
-        return 0;
-    }
-
-    
-    return 0; UNKOWN;
-
-}
-
-
-
-
-
 
 
 void handle_ping(int client_fd){
     send(client_fd, ping_response, strlen(ping_response), 0);
-    free(ping_response);
 }
 
 void handle_echo(RespRequest *req, int client_fd){
@@ -131,7 +25,7 @@ void handle_echo(RespRequest *req, int client_fd){
 }
 
 void handle_set(RespRequest *req, int client_fd){
-    if(strlen(req->args) < 2){return;}
+    if(req->args < 3){return;}
     store_set(req->args[0], req->args[1]);
 }
 
@@ -149,5 +43,115 @@ void handle_get(RespRequest *req, int client_fd) {
 void handle_unkown(RespRequest *req, int client_fd){
 
 }
+
+int handle(RespRequest *req, int client_fd){
+    
+    /**    REDIS_CMDS command;
+    char *args[16];          
+    int argc;  
+    */
+   
+    if(req == NULL){
+        send(client_fd, "Request parsed is null", 22, 0);
+        return 1;
+    }
+   
+    if(req->command== ECHO){
+        handle_echo(req, client_fd);
+        return 0;
+    }
+    if(req->command == PING){
+        handle_ping(client_fd);
+        return 0; 
+    }
+    if(req->command == AUTH){
+        return 0; 
+    }
+    if(req->command == SELECT){
+        return 0; 
+    }
+    if(req->command == COMMAND){
+        return 0; 
+    }
+
+    //Core cmds
+    if(req->command == SET){
+        handle_set(req, client_fd);
+        return 0;
+    }
+    if(req->command == GET){
+        handle_get(req, client_fd);
+        return 0; 
+    }
+    if(req->command == DEL){
+        return 0; 
+    }
+    if(req->command == EXISTS){
+        return 0; 
+    }
+    if(req->command == EXPIRE){
+        return 0; 
+    }
+    if(req->command == TTL){
+        return 0;
+    }
+
+    //Cmds for strings and numbers
+    if(req->command == INCR){
+        return 0;
+    }
+    if(req->command == DECR){
+        return 0;
+    }
+    if(req->command == APPEND){
+        return 0;
+    }
+    if(req->command == STRLEN){
+        return 0;
+    }
+    if(req->command == MGET){
+        return 0;
+    }
+
+    //List cmds
+    if(req->command == HSET){
+        return 0;
+    }
+    if(req->command == HGET){
+        return 0;
+    }
+    if(req->command == HGETALL){
+        return 0;
+    }
+    if(req->command == HDEL){
+        return 0;
+    }
+
+    //Sets cmds
+    if(req->command == SADD){
+        return 0;
+    }
+    if(req->command == SREM){
+        return 0;
+    }
+    if(req->command == SMEMBERS){
+        return 0;
+    }
+    if(req->command == SISMEMBER){
+        return 0;
+    }
+
+    //TODO: implement handle_unkown();
+    return 1; //Default = UNKOWN;
+
+}
+
+
+
+
+
+
+
+
 
 

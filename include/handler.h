@@ -10,11 +10,12 @@ typedef struct {
     cmd_func handler;
 } CommandEntry;
 
-int handle(RespRequest *req, int client_fd);
+
 void handle_ping(int client_fd);
 void handle_echo(RespRequest *req, int client_fd);
 void handle_set(RespRequest *req, int client_fd);
 void handle_get(RespRequest *req, int client_fd);
 void handle_unkown(RespRequest *req, int client_fd);
+int handle(RespRequest *req, int client_fd);
 
 #endif
