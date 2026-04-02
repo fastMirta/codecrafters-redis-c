@@ -10,7 +10,7 @@ typedef struct Entry {
     struct Entry *next;  
 } Entry;
 
-Entry *table[TABLE_SIZE];
+extern Entry *table[TABLE_SIZE];
 
 int hash(char *key);
 void store_set(char *key, char *value);

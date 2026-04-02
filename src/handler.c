@@ -18,14 +18,13 @@ void handle_ping(int client_fd){
 
 void handle_echo(RespRequest *req, int client_fd){
     char response[1024];
-	snprintf(response, sizeof(response), "$%d\r\n%s\r\n", (int)strlen(req->args[0]), req->args[0]);
+    snprintf(response, sizeof(response), "$%zu\r\n%s\r\n", strlen(req->args[1]), req->args[1]);
 	send(client_fd, response, strlen(response), 0);
 
-    free(response);
 }
 
 void handle_set(RespRequest *req, int client_fd){
-    if(req->args < 3){return;}
+    if(req->argc < 3){return;}
     store_set(req->args[0], req->args[1]);
 }
 
