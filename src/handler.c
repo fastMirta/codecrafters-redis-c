@@ -18,7 +18,7 @@ int handle_set_flags(RespRequest *req, int *expireAt, TIME_FLAGS *flag){
         return 1;
     }
     int indexSave = 0;
-    for(int i = 1; i < req->argc - 1; i++){
+    for(int i = 1; i < req->argc; i++){
         printf("%s\n", req->args[i]);
         if(strcmp(req->args[i], "EX") == 0){
             indexSave = i;
