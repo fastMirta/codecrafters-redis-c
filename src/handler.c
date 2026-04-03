@@ -17,16 +17,15 @@ int handle_set_flags(RespRequest *req, int *expireAt, TIME_FLAGS *flag){
         printf("Doesnt have flags");
         return 1;
     }
-    int indexSave = 0;
-    for(int i = 1; i < req->argc; i++){
+    for(int i = 1; i < req->argc - 1; i++){
         printf("%s\n", req->args[i]);
         if(strcmp(req->args[i], "EX") == 0){
-            indexSave = i;
+            *expireAt = atoi(req->args[i + 1]);
             *flag = EX;
             break;
         }
         else if(strcmp(req->args[i], "PX") == 0){
-            indexSave = i;
+            *expireAt = atoi(req->args[i + 1]);
             *flag = PX;
             break;
         }
@@ -36,10 +35,6 @@ int handle_set_flags(RespRequest *req, int *expireAt, TIME_FLAGS *flag){
         *expireAt = -1;
         return 0;
     }
-    if(indexSave + 1 >= req->argc - 1){
-        return 1;
-    }
-    *expireAt = atoi(req->args[indexSave + 1]);
     return 0;
 
     
