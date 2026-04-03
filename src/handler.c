@@ -9,6 +9,41 @@
 
 
 
+int handle_set_flags(RespRequest *req, int *expireAt, TIME_FLAGS *flag){
+    printf("\n");
+    printf("ENTERED FLAGS HANDLER\n");
+    
+    if(req->argc <= 1){
+        printf("Doesnt have flags");
+        return 1;
+    }
+    int indexSave = 0;
+    for(int i = 1; i < req->argc - 1; i++){
+        printf("%s\n", req->args[i]);
+        if(strcmp(req->args[i], "EX") == 0){
+            indexSave = i;
+            *flag = EX;
+            break;
+        }
+        else if(strcmp(req->args[i], "PX") == 0){
+            indexSave = i;
+            *flag = PX;
+            break;
+        }
+        
+    }
+    if(*flag == NO_TIME_FLAG){
+        *expireAt = -1;
+        return 0;
+    }
+    if(indexSave + 1 >= req->argc - 1){
+        return 1;
+    }
+    *expireAt = atoi(req->args[indexSave + 1]);
+    return 0;
+
+    
+}
 
 
 
@@ -36,11 +71,21 @@ void handle_set(RespRequest *req, int client_fd){
         printf("length smaller than 3");
         return;
     }
-    store_set(req->args[0], req->args[1]);
-    send(client_fd, "+OK\r\n", 5, 0);
+    TIME_FLAGS time = NO_TIME_FLAG;
+    int seconds = 0;
+    if(handle_set_flags(req, &seconds, &time) == 0){
+        store_set(req->args[0], req->args[1], time, seconds);
+        send(client_fd, "+OK\r\n", 5, 0);
+    }
+    else{
+        send(client_fd, "+FAIL\r\n", 7, 0);
+    }
+
 }
 
 void handle_get(RespRequest *req, int client_fd) {
+
+
     char response[1024];
     char *value = store_get(req->args[0]); 
     if (value == NULL) {
@@ -51,7 +96,7 @@ void handle_get(RespRequest *req, int client_fd) {
     send(client_fd, response, strlen(response), 0);
 }
 
-void handle_unkown(RespRequest *req, int client_fd){
+void handle_unknown(RespRequest *req, int client_fd){
 
 }
 
@@ -157,8 +202,8 @@ int handle(RespRequest *req, int client_fd){
         return 0;
     }
 
-    //TODO: implement handle_unkown();
-    return 1; //Default = UNKOWN;
+    //TODO: implement handle_unknown();
+    return 1; //Default = UNKNOWN;
 
 }
 

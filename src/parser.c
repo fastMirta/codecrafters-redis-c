@@ -192,5 +192,5 @@ REDIS_CMDS findRedisCmd(char *cmdName, int lineLength){
     if(strncmp(cmdName, "SMEMBERS", lineLength) == 0){return SMEMBERS;}
     if(strncmp(cmdName, "SISMEMBER", lineLength) == 0){return SISMEMBER;}
 
-    return UNKOWN;
+    return UNKNOWN;
 }

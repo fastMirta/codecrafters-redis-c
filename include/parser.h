@@ -5,7 +5,7 @@
 
 
 typedef enum  {
-    UNKOWN,
+    UNKNOWN,
 
     //Utility cmds
     ECHO,
