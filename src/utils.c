@@ -23,9 +23,12 @@ void store_set(char *key, char *value, TIME_FLAGS flag, int seconds) {
     int index = hash(key);
     if (table[index] == NULL)
         table[index] = malloc(sizeof(Entry));
+    else{
+        free(table[index]->key);
+        free(table[index]->value);
+    }
     //Clean old memory
-    table[index]->key = strdup(key); 
-    table[index]->value = strdup(value);
+
     
     table[index]->key = key;
     table[index]->value = value;
@@ -41,7 +44,7 @@ void store_set(char *key, char *value, TIME_FLAGS flag, int seconds) {
     }
 
     printf("\n");
-    printf("seconds: %d\n", table[index]->expires_at);
+    printf("seconds: %lld\n", table[index]->expires_at);
 }
 
 char *store_get(char *key) {
