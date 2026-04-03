@@ -4,38 +4,47 @@
 
 
 
-typedef enum  {
+typedef enum {
     UNKNOWN,
 
-    //Utility cmds
+    // Utility cmds
     ECHO,
     PING,
     AUTH,
     SELECT,
     COMMAND,
 
-    //Core cmds
+    // Core cmds 
     SET,
     GET,
     DEL,
     EXISTS,
     EXPIRE,
     TTL,
+    TYPE,
 
-    //Cmds for strings and numbers
+    // String & Number specific cmds
     INCR,
     DECR,
     APPEND,
     STRLEN,
     MGET,
 
-    //List cmds
+    // List cmds 
+    LPUSH,
+    RPUSH,
+    LPOP,
+    RPOP,
+    LLEN,
+    LRANGE,
+
+    // Hash cmds
     HSET,
     HGET,
     HGETALL,
     HDEL,
 
-    //Sets cmds
+    // Sets cmds
     SADD,
     SREM,
     SMEMBERS,
@@ -49,7 +58,7 @@ typedef struct {
     int argc; 
 } RespRequest;
 
-REDIS_CMDS findRedisCmd(char *cmdName, int lineLength);
+REDIS_CMDS findRedisCmd(char *cmdName);
 int parse(char *client_input, RespRequest *request);
 char* getLine(char *client_input);
 int getPrefix(char line[], char *prefix);

@@ -61,7 +61,7 @@ void handle_echo(RespRequest *req, int client_fd){
 
 }
 
-void handle_set(RespRequest *req, int client_fd){
+void handle_set(RespRequest *req, int client_fd, RedisType type){
     if(req->argc < 3){
         printf("length smaller than 3");
         return;
@@ -69,7 +69,7 @@ void handle_set(RespRequest *req, int client_fd){
     TIME_FLAGS time = NO_TIME_FLAG;
     int seconds = 0;
     if(handle_set_flags(req, &seconds, &time) == 0){
-        store_set(req->args[0], req->args[1], time, seconds);
+        store_set(req->args[0], req->args[1], time, seconds, type);
         send(client_fd, "+OK\r\n", 5, 0);
     }
     else{
@@ -79,8 +79,6 @@ void handle_set(RespRequest *req, int client_fd){
 }
 
 void handle_get(RespRequest *req, int client_fd) {
-
-
     char response[1024];
     char *value = store_get(req->args[0]); 
     if (value == NULL) {
@@ -91,118 +89,117 @@ void handle_get(RespRequest *req, int client_fd) {
     send(client_fd, response, strlen(response), 0);
 }
 
+void handle_type(RespRequest *req, int client_fd){
+    char response[1024];
+    Entry *entry = store_getEntry(req->args[0]);
+    if(entry == NULL){
+        send(client_fd, "+none\r\n", 7, 0);
+        return;
+    }
+    switch (entry->type) {
+        case TYPE_STRING: send(client_fd, "+string\r\n", 9, 0); break;
+        case TYPE_LIST:   send(client_fd, "+list\r\n", 7, 0);   break;
+        case TYPE_HASH:   send(client_fd, "+hash\r\n", 7, 0);   break;
+        case TYPE_ZSET:   send(client_fd, "+zset\r\n", 7, 0);   break;
+        case TYPE_SET:    send(client_fd, "+set\r\n", 6, 0);    break;
+        default:          send(client_fd, "+none\r\n", 7, 0);   break;
+    }
+}
+
 void handle_unknown(RespRequest *req, int client_fd){
 
 }
 
-int handle(RespRequest *req, int client_fd){
-    printf("\n ENTERED HANDLER");
-    /**    REDIS_CMDS command;
-    char *args[16];          
-    int argc;  
-    */
-    
-    if(req == NULL){
-        printf("ERROR IN HANDLE");
-        send(client_fd, "Request parsed is null", 22, 0);
+int handle(RespRequest *req, int client_fd) {
+    if (req == NULL) {
+        printf("ERROR IN HANDLE: Request is NULL\n");
+        send(client_fd, "-ERR Internal error\r\n", 21, 0);
         return 1;
     }
-   
-    if(req->command== ECHO){
+
+    printf("\n--- Entered Handler: Command ID %d ---\n", req->command);
+
+    // Utility cmds
+    if (req->command == ECHO) {
         handle_echo(req, client_fd);
-        printf("ECHOED");
         return 0;
     }
-    if(req->command == PING){
+    if (req->command == PING) {
         handle_ping(client_fd);
-        printf("Pinged\n");
         return 0; 
     }
-    if(req->command == AUTH){
-        return 0; 
-    }
-    if(req->command == SELECT){
-        return 0; 
-    }
-    if(req->command == COMMAND){
+    if (req->command == AUTH || req->command == SELECT || req->command == COMMAND) {
+        // Redis-cli שולח לעיתים פקודות אלו בהתחלה, נחזיר OK כדי לא לתקוע אותו
+        send(client_fd, "+OK\r\n", 5, 0);
         return 0; 
     }
 
-    //Core cmds
-    if(req->command == SET){
-        printf("SET");
-        handle_set(req, client_fd);
+    // Core cmds
+    if (req->command == SET) {
+        printf("Executing SET\n");
+        handle_set(req, client_fd, TYPE_STRING);
         return 0;
     }
-    if(req->command == GET){
-        printf("GET");
+    if (req->command == GET) {
+        printf("Executing GET\n");
         handle_get(req, client_fd);
         return 0; 
     }
-    if(req->command == DEL){
+    if (req->command == DEL) {
+        // handle_del(req, client_fd);
         return 0; 
     }
-    if(req->command == EXISTS){
+    if (req->command == EXISTS) {
+        // handle_exists(req, client_fd);
         return 0; 
     }
-    if(req->command == EXPIRE){
+    if (req->command == EXPIRE) {
+        // handle_expire(req, client_fd);
         return 0; 
     }
-    if(req->command == TTL){
+    if (req->command == TTL) {
+        // handle_ttl(req, client_fd);
+        return 0;
+    }
+    if (req->command == TYPE) {
+        printf("Executing TYPE\n");
+        handle_type(req, client_fd);
         return 0;
     }
 
-    //Cmds for strings and numbers
-    if(req->command == INCR){
-        return 0;
-    }
-    if(req->command == DECR){
-        return 0;
-    }
-    if(req->command == APPEND){
-        return 0;
-    }
-    if(req->command == STRLEN){
-        return 0;
-    }
-    if(req->command == MGET){
-        return 0;
-    }
+    // String & Number specific cmds
+    if (req->command == INCR) { return 0; }
+    if (req->command == DECR) { return 0; }
+    if (req->command == APPEND) { return 0; }
+    if (req->command == STRLEN) { return 0; }
+    if (req->command == MGET) { return 0; }
 
-    //List cmds
-    if(req->command == HSET){
-        return 0;
+    // List cmds
+    if (req->command == LPUSH) { 
+        handle_set(req, client_fd, TYPE_LIST);
+        return 0; 
     }
-    if(req->command == HGET){
-        return 0;
-    }
-    if(req->command == HGETALL){
-        return 0;
-    }
-    if(req->command == HDEL){
-        return 0;
-    }
+    if (req->command == RPUSH) { return 0; }
+    if (req->command == LPOP)  { return 0; }
+    if (req->command == RPOP)  { return 0; }
 
-    //Sets cmds
-    if(req->command == SADD){
-        return 0;
-    }
-    if(req->command == SREM){
-        return 0;
-    }
-    if(req->command == SMEMBERS){
-        return 0;
-    }
-    if(req->command == SISMEMBER){
-        return 0;
-    }
+    // Hash cmds
+    if (req->command == HSET)    { return 0; }
+    if (req->command == HGET)    { return 0; }
+    if (req->command == HGETALL) { return 0; }
+    if (req->command == HDEL)    { return 0; }
 
-    //TODO: implement handle_unknown();
-    return 1; //Default = UNKNOWN;
+    // Sets cmds
+    if (req->command == SADD)      { return 0; }
+    if (req->command == SREM)      { return 0; }
+    if (req->command == SMEMBERS)  { return 0; }
+    if (req->command == SISMEMBER) { return 0; }
 
+    // Default: UNKNOWN
+    printf("Unknown command received\n");
+    send(client_fd, "-ERR unknown command\r\n", 22, 0);
+    return 1;
 }
-
-
 
 
 

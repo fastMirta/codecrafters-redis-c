@@ -19,7 +19,8 @@ int hash(char *key) {
 }
 
 
-void store_set(char *key, char *value, TIME_FLAGS flag, int seconds) {
+
+void store_set(char *key, char *value, TIME_FLAGS flag, int seconds, RedisType type) {
     int index = hash(key);
     if (table[index] == NULL)
         table[index] = malloc(sizeof(Entry));
@@ -27,12 +28,11 @@ void store_set(char *key, char *value, TIME_FLAGS flag, int seconds) {
         free(table[index]->key);
         free(table[index]->value);
     }
-    //Clean old memory
-
     
     table[index]->key = key;
-    table[index]->value = value;
+    table[index]->value = value; //redis-cli SET "myInt" 12 redis-cli GET "myInt"
     table[index]->expires_at = 0;
+    table[index]->type = type;
 
     if (seconds != -1) {
         long long now = get_current_time_ms();
@@ -62,6 +62,12 @@ char *store_get(char *key) {
     return table[index]->value;
 }
 
+Entry *store_getEntry(char *key){
+     int index = hash(key);
+    if (table[index] == NULL)
+        return NULL;
+    return table[index];
+}
 
 
 

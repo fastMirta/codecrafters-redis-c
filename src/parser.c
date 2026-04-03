@@ -66,7 +66,7 @@ int parse(char *client_input, RespRequest *request){
             char *secondLinewith2 = malloc(strlen(secondLine));
             strncpy(secondLinewith2, secondLine, strlen(secondLine));
             printf("second linessss: %s", secondLinewith2);
-            request->command = findRedisCmd(secondLine, strlen(secondLine));
+            request->command = findRedisCmd(secondLine);
         }
         else{
             request->args[i-1] = secondLine;
@@ -111,9 +111,9 @@ int parse(char *client_input, RespRequest *request){
 /**
  * Create (ECHO)Handler and add this to it:
  * if(i == 0){
-            int lineLength = strlen(firstLine);
-            lineLength = lineLength - 2;
-            currentMethod = findRedisCmd(firstLine, lineLength);
+            in = strlen(firstLine);
+      - 2;
+            currentMethod = findRedisCmd(firstLine);
             if(currentMethod == ECHO && loopLen != 2){return;}
         }
  */
@@ -156,41 +156,53 @@ int getPrefix(char line[], char *prefix){
 /**
  * @param cmdName name of the cmd (third line of the data given by the client)
  */
-REDIS_CMDS findRedisCmd(char *cmdName, int lineLength){
+REDIS_CMDS findRedisCmd(char *cmdName) {
+    if (cmdName == NULL) return UNKNOWN;
+    
     toUpper(cmdName);
-    //Utility cmds
-    if(strncmp(cmdName, "ECHO", lineLength) == 0){return ECHO;}
-    if(strncmp(cmdName, "PING", lineLength) == 0){return PING;}
-    if(strncmp(cmdName, "AUTH", lineLength) == 0){return AUTH;}
-    if(strncmp(cmdName, "SELECT", lineLength) == 0){return SELECT;}
-    if(strncmp(cmdName, "COMMAND", lineLength) == 0){return COMMAND;}
 
-    //Core cmds
-    if(strncmp(cmdName, "SET", lineLength) == 0){return SET;}
-    if(strncmp(cmdName, "GET", lineLength) == 0){return GET;}
-    if(strncmp(cmdName, "DEL", lineLength) == 0){return DEL;}
-    if(strncmp(cmdName, "EXISTS", lineLength) == 0){return EXISTS;}
-    if(strncmp(cmdName, "EXPIRE", lineLength) == 0){return EXPIRE;}
-    if(strncmp(cmdName, "TTL", lineLength) == 0){return TTL;}
+    // Utility cmds
+    if (strcmp(cmdName, "ECHO") == 0) return ECHO;
+    if (strcmp(cmdName, "PING") == 0) return PING;
+    if (strcmp(cmdName, "AUTH") == 0) return AUTH;
+    if (strcmp(cmdName, "SELECT") == 0) return SELECT;
+    if (strcmp(cmdName, "COMMAND") == 0) return COMMAND;
 
-    //Cmds for strings and numbers
-    if(strncmp(cmdName, "INCR", lineLength) == 0){return INCR;}
-    if(strncmp(cmdName, "DECR", lineLength) == 0){return DECR;}
-    if(strncmp(cmdName, "APPEND", lineLength) == 0){return APPEND;}
-    if(strncmp(cmdName, "STRLEN", lineLength) == 0){return STRLEN;}
-    if(strncmp(cmdName, "MGET", lineLength) == 0){return MGET;}
+    // Core cmds (Generic)
+    if (strcmp(cmdName, "SET") == 0) return SET;
+    if (strcmp(cmdName, "GET") == 0) return GET;
+    if (strcmp(cmdName, "DEL") == 0) return DEL;
+    if (strcmp(cmdName, "EXISTS") == 0) return EXISTS;
+    if (strcmp(cmdName, "EXPIRE") == 0) return EXPIRE;
+    if (strcmp(cmdName, "TTL") == 0) return TTL;
+    if (strcmp(cmdName, "TYPE") == 0) return TYPE;
 
-    //List cmds
-    if(strncmp(cmdName, "HSET", lineLength) == 0){return HSET;}
-    if(strncmp(cmdName, "HGET", lineLength) == 0){return HGET;}
-    if(strncmp(cmdName, "HGETALL", lineLength) == 0){return HGETALL;}
-    if(strncmp(cmdName, "HDEL", lineLength) == 0){return HDEL;}
+    // String & Number specific cmds
+    if (strcmp(cmdName, "INCR") == 0) return INCR;
+    if (strcmp(cmdName, "DECR") == 0) return DECR;
+    if (strcmp(cmdName, "APPEND") == 0) return APPEND;
+    if (strcmp(cmdName, "STRLEN") == 0) return STRLEN;
+    if (strcmp(cmdName, "MGET") == 0) return MGET;
 
-    //Sets cmds
-    if(strncmp(cmdName, "SADD", lineLength) == 0){return SADD;}
-    if(strncmp(cmdName, "SREM", lineLength) == 0){return SREM;}
-    if(strncmp(cmdName, "SMEMBERS", lineLength) == 0){return SMEMBERS;}
-    if(strncmp(cmdName, "SISMEMBER", lineLength) == 0){return SISMEMBER;}
+    // List cmds (Added real list commands)
+    if (strcmp(cmdName, "LPUSH") == 0) return LPUSH;
+    if (strcmp(cmdName, "RPUSH") == 0) return RPUSH;
+    if (strcmp(cmdName, "LPOP") == 0) return LPOP;
+    if (strcmp(cmdName, "RPOP") == 0) return RPOP;
+    if (strcmp(cmdName, "LLEN") == 0) return LLEN;
+    if (strcmp(cmdName, "LRANGE") == 0) return LRANGE;
+
+    // Hash cmds (Fixed: H-commands are Hashes, not Lists)
+    if (strcmp(cmdName, "HSET") == 0) return HSET;
+    if (strcmp(cmdName, "HGET") == 0) return HGET;
+    if (strcmp(cmdName, "HGETALL") == 0) return HGETALL;
+    if (strcmp(cmdName, "HDEL") == 0) return HDEL;
+
+    // Sets cmds
+    if (strcmp(cmdName, "SADD") == 0) return SADD;
+    if (strcmp(cmdName, "SREM") == 0) return SREM;
+    if (strcmp(cmdName, "SMEMBERS") == 0) return SMEMBERS;
+    if (strcmp(cmdName, "SISMEMBER") == 0) return SISMEMBER;
 
     return UNKNOWN;
 }
