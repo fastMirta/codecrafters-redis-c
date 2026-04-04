@@ -36,17 +36,17 @@ int validate_set_stream(int index){
 }
 //redis-cli XADD stream_key 1526919030474-0 temperature 36 humidity 95
 //"1526919030474-0"
-void store_set_stream(char *key, StreamEntry *value){
+void store_set_stream(char *key, Stream *stream){
     int index = hash(key);
     if (table[index] == NULL)
-        table[index] = malloc(sizeof(Entry));
+        table[index] = malloc(sizeof(Stream));
     else{
         free(table[index]->key);
         free(table[index]->value);
     }
-
+    
     table[index]->key = key;
-    table[index]->value = value; 
+    table[index]->value = stream; 
     table[index]->expires_at = 0;
     table[index]->type = TYPE_STREAM;
     printf("\n");

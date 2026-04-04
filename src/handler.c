@@ -61,6 +61,53 @@ void handle_echo(RespRequest *req, int client_fd){
 
 }
 
+void handle_set_stream(RespRequest *req, int client_fd){
+    Stream *stream = NULL;
+    Entry *entry = store_getEntry(req->args[0]);
+
+    if(entry == NULL){
+        stream = calloc(1, sizeof(Stream));
+        if(stream == NULL){
+            char *err = "-ERR Out of memory\r\n";
+            send(client_fd, err, strlen(err), 0);
+            return;
+        }
+    } else {
+        stream = (Stream*) entry->value;
+    }
+
+    StreamEntry *streamEntry = malloc(sizeof(StreamEntry));
+    if(streamEntry == NULL) return;
+    streamEntry->id = strdup(req->args[1]);
+    streamEntry->field_count = req->argc - 2;
+    streamEntry->fields = malloc(sizeof(char *) * (req->argc - 2));
+    for(int i = 2; i < req->argc; i++){
+        streamEntry->fields[i - 2] = req->args[i];
+    }
+    streamEntry->next = NULL;
+
+    if(stream->head == NULL){
+        stream->head = streamEntry;
+        stream->tail = streamEntry;
+        store_set_stream(req->args[0], stream);
+    } else {
+        long long request_id_ms, request_id_seq, last_request_ms, last_request_seq;
+        sscanf(req->args[1], "%lld-%lld", &request_id_ms, &request_id_seq);
+        sscanf(stream->tail->id, "%lld-%lld", &last_request_ms, &last_request_seq);
+        if(request_id_ms < last_request_ms || (request_id_ms == last_request_ms && request_id_seq <= last_request_seq)){
+            char *errorResp = "-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n";
+            send(client_fd, errorResp, strlen(errorResp), 0);
+            return;
+        }
+        stream->tail->next = streamEntry;
+        stream->tail = streamEntry;
+    }
+
+    char response[128];
+    int len = snprintf(response, sizeof(response), "$%zu\r\n%s\r\n", strlen(streamEntry->id), streamEntry->id);
+    send(client_fd, response, len, 0);
+}
+
 int get_length(char *array[]){
     int count = 0;
     while (array[count] != NULL) {
@@ -77,25 +124,7 @@ void handle_set(RespRequest *req, int client_fd, RedisType type){
         return;
     }
     if(type == TYPE_STREAM){
-        StreamEntry *stream = malloc(sizeof(StreamEntry));
-        if (stream == NULL) return;
-        stream->id = strdup(req->args[1]);
-        stream->field_count = req->argc;
-        stream->fields = malloc(sizeof(char *) * req->argc);
-
-        get_length(req->args);
-        //Build Stream fields
-        for(int i = 2; i < req->argc; i++){
-            printf("%d\n", i);
-            stream->fields[i] = req->args[i];
-            //printf("%s\n", stream->fields[i]);
-        }
-        stream->next = NULL;
-        store_set_stream(req->args[0], stream);
-        char response[128];
-        int len = snprintf(response, sizeof(response), "$%zu\r\n%s\r\n", strlen(stream->id), stream->id);
-        send(client_fd, response, len, 0);
-        
+        handle_set_stream(req, client_fd);
     }
     else{
         TIME_FLAGS time = NO_TIME_FLAG;

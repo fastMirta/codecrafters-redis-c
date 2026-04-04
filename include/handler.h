@@ -8,6 +8,8 @@
 int handle_set_flags(RespRequest *req, int *expireAt, TIME_FLAGS *flag);
 void handle_ping(int client_fd);
 void handle_echo(RespRequest *req, int client_fd);
+void handle_set_stream(RespRequest *req, int client_fd);
+int get_length(char *array[]);
 void handle_set(RespRequest *req, int client_fd);
 void handle_get(RespRequest *req, int client_fd);
 void handle_type(RespRequest *req, int client_fd);

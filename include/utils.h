@@ -28,6 +28,7 @@ typedef struct Entry {
     RedisType type;
 } Entry;
 
+
 typedef struct StreamEntry {
     char *id;            
     char **fields;       
@@ -35,11 +36,18 @@ typedef struct StreamEntry {
     struct StreamEntry *next;
 } StreamEntry;
 
+typedef struct Stream {
+    StreamEntry *head;
+    StreamEntry *tail;  
+    long long last_ms;
+    long long last_seq;
+    size_t length;
+} Stream;
 
 extern Entry *table[TABLE_SIZE];
 
 int hash(char *key);
-void store_set_stream(char *key, StreamEntry *value);
+void store_set_stream(char *key, Stream *stream);
 void store_set(char *key, void *value, TIME_FLAGS flag, int seconds, RedisType type);
 char* store_get(char *key);
 Entry *store_getEntry(char *key);
