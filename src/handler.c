@@ -114,17 +114,27 @@ void generateId(Stream *stream, StreamEntry *streamEntry) {
     long long finalMs, finalSeq;
     char idToString[48];
 
-    if (stream->head == NULL) {
-        finalMs =  0;
-        finalSeq = (finalMs == 0) ? 1 : 0;
-    } 
-    else if (now > stream->last_ms) {
-        finalMs = now;
-        finalSeq = 0;
-    } 
+    // partial auto-generate: "ms-*"
+    if(strstr(streamEntry->id, "-*") != NULL){
+        sscanf(streamEntry->id, "%lld-*", &finalMs);
+        if(finalMs == stream->last_ms){
+            finalSeq = stream->last_seq + 1;
+        } else {
+            finalSeq = (finalMs == 0) ? 1 : 0;
+        }
+    }
+    // full auto-generate: "*"
     else {
-        finalMs = stream->last_ms;
-        finalSeq = stream->last_seq + 1;
+        if(stream->head == NULL){
+            finalMs = now;
+            finalSeq = (finalMs == 0) ? 1 : 0;
+        } else if(now > stream->last_ms){
+            finalMs = now;
+            finalSeq = 0;
+        } else {
+            finalMs = stream->last_ms;
+            finalSeq = stream->last_seq + 1;
+        }
     }
 
     snprintf(idToString, sizeof(idToString), "%lld-%lld", finalMs, finalSeq);
@@ -132,10 +142,7 @@ void generateId(Stream *stream, StreamEntry *streamEntry) {
     streamEntry->id = strdup(idToString);
     stream->last_ms = finalMs;
     stream->last_seq = finalSeq;
-        
-
 }
-
 
 void handle_set_stream(RespRequest *req, int client_fd){
     char *errorResp = NULL;
