@@ -115,7 +115,7 @@ void generateId(Stream *stream, StreamEntry *streamEntry) {
     char idToString[48];
 
     if (stream->head == NULL) {
-        finalMs = (now > 0) ? now : 0;
+        finalMs =  0;
         finalSeq = (finalMs == 0) ? 1 : 0;
     } 
     else if (now > stream->last_ms) {
