@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <time.h>
 #include "utils.h"
 
 
@@ -61,7 +62,88 @@ void handle_echo(RespRequest *req, int client_fd){
 
 }
 
+// int validate_stream_request(long long currentTime, Stream *stream, StreamEntry *StreamEntry){
+//     if(stream->last_ms > currentTime){
+//         stream->tail->id = stream->last_ms + 1;
+//     }
+// }
+
+int validate_stream_id(RespRequest *req, char **errorMsg){
+    if(strcmp(req->args[1], "*") == 0){
+        return 0;
+    }
+
+    if(strstr(req->args[1], "-") == NULL){
+        *errorMsg = "-ERR Invalid stream ID specified\r\n";
+        return 1;
+    }
+
+    char ms[64], seq[64];
+    sscanf(req->args[1], "%63[^-]-%63s", ms, seq);
+
+    if(strcmp(ms, "*") == 0){
+        *errorMsg = "-ERR Invalid stream ID specified\r\n";
+        return 1;
+    }
+
+    if(strcmp(seq, "*") == 0 && atoi(ms) >= 0){
+        long long parsed_ms;
+        if(sscanf(ms, "%lld", &parsed_ms) != 1){
+            *errorMsg = "-ERR Invalid stream ID specified\r\n";
+            return 1;
+        }
+        return 0;
+    }
+
+    long long request_id_ms, request_id_seq;
+    if(sscanf(req->args[1], "%lld-%lld", &request_id_ms, &request_id_seq) != 2){
+        *errorMsg = "-ERR Invalid stream ID specified\r\n";
+        return 1;
+    }
+
+    if(request_id_ms == 0 && request_id_seq == 0){
+        *errorMsg = "-ERR The ID specified in XADD must be greater than 0-0\r\n";
+        return 1;
+    }
+
+    return 0;
+}
+
+void generateId(Stream *stream, StreamEntry *streamEntry) {
+    long long now = get_current_time_ms();
+    long long finalMs, finalSeq;
+    char idToString[48];
+
+    if (stream->head == NULL) {
+        finalMs = (now > 0) ? now : 0;
+        finalSeq = (finalMs == 0) ? 1 : 0;
+    } 
+    else if (now > stream->last_ms) {
+        finalMs = now;
+        finalSeq = 0;
+    } 
+    else {
+        finalMs = stream->last_ms;
+        finalSeq = stream->last_seq + 1;
+    }
+
+    snprintf(idToString, sizeof(idToString), "%lld-%lld", finalMs, finalSeq);
+    free(streamEntry->id);
+    streamEntry->id = strdup(idToString);
+    stream->last_ms = finalMs;
+    stream->last_seq = finalSeq;
+        
+
+}
+
+
 void handle_set_stream(RespRequest *req, int client_fd){
+    char *errorResp = NULL;
+    if(validate_stream_id(req, &errorResp) == 1){
+        send(client_fd, errorResp, strlen(errorResp), 0);
+        return;
+    }
+
     Stream *stream = NULL;
     Entry *entry = store_getEntry(req->args[0]);
 
@@ -76,39 +158,45 @@ void handle_set_stream(RespRequest *req, int client_fd){
         stream = (Stream*) entry->value;
     }
 
-    long long request_id_ms, request_id_seq;
-    sscanf(req->args[1], "%lld-%lld", &request_id_ms, &request_id_seq);
-
-    if(request_id_ms == 0 && request_id_seq == 0){
-        char *errorResp = "-ERR The ID specified in XADD must be greater than 0-0\r\n";
-        send(client_fd, errorResp, strlen(errorResp), 0);
+    StreamEntry *streamEntry = malloc(sizeof(StreamEntry));
+    if(streamEntry == NULL){
+        char *err = "-ERR Out of memory\r\n";
+        send(client_fd, err, strlen(err), 0);
         return;
     }
 
-    StreamEntry *streamEntry = malloc(sizeof(StreamEntry));
-    if(streamEntry == NULL) return;
     streamEntry->id = strdup(req->args[1]);
+    streamEntry->next = NULL;
+
+    if(strchr(req->args[1], '*') != NULL){
+        generateId(stream, streamEntry);
+    }
+
+    long long request_id_ms, request_id_seq;
+    sscanf(streamEntry->id, "%lld-%lld", &request_id_ms, &request_id_seq);
+
     streamEntry->field_count = req->argc - 2;
     streamEntry->fields = malloc(sizeof(char *) * (req->argc - 2));
     for(int i = 2; i < req->argc; i++){
         streamEntry->fields[i - 2] = req->args[i];
     }
-    streamEntry->next = NULL;
 
     if(stream->head == NULL){
         stream->head = streamEntry;
         stream->tail = streamEntry;
+        stream->last_ms = request_id_ms;
+        stream->last_seq = request_id_seq;
         store_set_stream(req->args[0], stream);
     } else {
-        long long last_request_ms, last_request_seq;
-        sscanf(stream->tail->id, "%lld-%lld", &last_request_ms, &last_request_seq);
-        if(request_id_ms < last_request_ms || (request_id_ms == last_request_ms && request_id_seq <= last_request_seq)){
-            char *errorResp = "-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n";
-            send(client_fd, errorResp, strlen(errorResp), 0);
+        if(request_id_ms < stream->last_ms || (request_id_ms == stream->last_ms && request_id_seq <= stream->last_seq)){
+            char *err = "-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n";
+            send(client_fd, err, strlen(err), 0);
             return;
         }
         stream->tail->next = streamEntry;
         stream->tail = streamEntry;
+        stream->last_ms = request_id_ms;
+        stream->last_seq = request_id_seq;
     }
 
     char response[128];

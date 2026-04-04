@@ -51,6 +51,7 @@ void store_set_stream(char *key, Stream *stream);
 void store_set(char *key, void *value, TIME_FLAGS flag, int seconds, RedisType type);
 char* store_get(char *key);
 Entry *store_getEntry(char *key);
+long long get_current_time_ms();
 
 
 #endif
