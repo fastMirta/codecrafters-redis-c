@@ -16,23 +16,31 @@ typedef enum {
     TYPE_HASH,
     TYPE_ZSET,
     TYPE_SET,
+    TYPE_STREAM,
     //NOTHING,
 } RedisType;
 
 typedef struct Entry {
     char *key;
-    char *value;
+    void *value;
     struct Entry *next;
     long long expires_at;
     RedisType type;
 } Entry;
 
+typedef struct StreamEntry {
+    char *id;            
+    char **fields;       
+    int field_count;     
+    struct StreamEntry *next;
+} StreamEntry;
 
 
 extern Entry *table[TABLE_SIZE];
 
 int hash(char *key);
-void store_set(char *key, char *value, TIME_FLAGS flag, int seconds, RedisType type);
+void store_set_stream(char *key, StreamEntry *value);
+void store_set(char *key, void *value, TIME_FLAGS flag, int seconds, RedisType type);
 char* store_get(char *key);
 Entry *store_getEntry(char *key);
 

@@ -18,9 +18,43 @@ int hash(char *key) {
     return hash;
 }
 
+int validate_set(char *key, void *value, RedisType type){
+    int index = hash(key);
+    //  switch (type) {
+    //     case TYPE_STRING: return validate_set_string();
+    //     case TYPE_LIST:   return validate_set_();  
+    //     case TYPE_HASH:   return validate_set_();  
+    //     case TYPE_ZSET:   return validate_set_();  
+    //     case TYPE_SET:    return validate_set_();
+    //     case TYPE_STREAM: return validate_set_stream(index);  
+    //     default:          return validate_set_();  
+    // }
+}
 
+int validate_set_stream(int index){
+    return(table[index]->type != TYPE_STREAM);
+}
+//redis-cli XADD stream_key 1526919030474-0 temperature 36 humidity 95
+//"1526919030474-0"
+void store_set_stream(char *key, StreamEntry *value){
+    int index = hash(key);
+    if (table[index] == NULL)
+        table[index] = malloc(sizeof(Entry));
+    else{
+        free(table[index]->key);
+        free(table[index]->value);
+    }
 
-void store_set(char *key, char *value, TIME_FLAGS flag, int seconds, RedisType type) {
+    table[index]->key = key;
+    table[index]->value = value; 
+    table[index]->expires_at = 0;
+    table[index]->type = TYPE_STREAM;
+    printf("\n");
+    printf("SUCCESS IN SET STREAM \n");
+
+}
+
+void store_set(char *key, void *value, TIME_FLAGS flag, int seconds, RedisType type) {
     int index = hash(key);
     if (table[index] == NULL)
         table[index] = malloc(sizeof(Entry));

@@ -50,6 +50,12 @@ typedef enum {
     SMEMBERS,
     SISMEMBER,
 
+    // Stream cmds
+    XADD,
+    XREAD,
+    XRANGE,
+    XGROUP,
+
 } REDIS_CMDS;
 
 typedef struct {

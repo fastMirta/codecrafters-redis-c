@@ -73,6 +73,9 @@ int parse(char *client_input, RespRequest *request){
         }
         client_input = client_input + strlen(secondLine) + 2;
     }
+    printf("\n");
+    printf("argc: %d\n", request->argc);
+    //printf("last args: %s\n", request->args[strlen(request->args)]);
     
     if(*client_input != '\0'){
         printf("Another error\n");
@@ -203,6 +206,12 @@ REDIS_CMDS findRedisCmd(char *cmdName) {
     if (strcmp(cmdName, "SREM") == 0) return SREM;
     if (strcmp(cmdName, "SMEMBERS") == 0) return SMEMBERS;
     if (strcmp(cmdName, "SISMEMBER") == 0) return SISMEMBER;
+
+    // Stream cmds
+    if (strcmp(cmdName, "XADD") == 0) return XADD;
+    if (strcmp(cmdName, "XREAD") == 0) return XREAD;
+    if (strcmp(cmdName, "XRANGE") == 0) return XRANGE;
+    if (strcmp(cmdName, "XGROUP") == 0) return XGROUP;
 
     return UNKNOWN;
 }

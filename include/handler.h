@@ -4,12 +4,6 @@
 #include "parser.h"
 #include "utils.h"
 
-typedef void (*cmd_func)(RespRequest *, int);
-
-typedef struct {
-    REDIS_CMDS cmd;
-    cmd_func handler;
-} CommandEntry;
 
 int handle_set_flags(RespRequest *req, int *expireAt, TIME_FLAGS *flag);
 void handle_ping(int client_fd);

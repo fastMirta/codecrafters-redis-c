@@ -61,20 +61,54 @@ void handle_echo(RespRequest *req, int client_fd){
 
 }
 
+int get_length(char *array[]){
+    int count = 0;
+    while (array[count] != NULL) {
+        count++;
+    }
+    printf("COUNT: %d\n", count);
+    return count;
+}
+
+
 void handle_set(RespRequest *req, int client_fd, RedisType type){
     if(req->argc < 3){
         printf("length smaller than 3");
         return;
     }
-    TIME_FLAGS time = NO_TIME_FLAG;
-    int seconds = 0;
-    if(handle_set_flags(req, &seconds, &time) == 0){
-        store_set(req->args[0], req->args[1], time, seconds, type);
-        send(client_fd, "+OK\r\n", 5, 0);
+    if(type == TYPE_STREAM){
+        StreamEntry *stream = malloc(sizeof(StreamEntry));
+        if (stream == NULL) return;
+        stream->id = strdup(req->args[1]);
+        stream->field_count = req->argc;
+        stream->fields = malloc(sizeof(char *) * req->argc);
+
+        get_length(req->args);
+        //Build Stream fields
+        for(int i = 2; i < req->argc; i++){
+            printf("%d\n", i);
+            stream->fields[i] = req->args[i];
+            //printf("%s\n", stream->fields[i]);
+        }
+        stream->next = NULL;
+        store_set_stream(req->args[0], stream);
+        char response[128];
+        int len = snprintf(response, sizeof(response), "$%zu\r\n%s\r\n", strlen(stream->id), stream->id);
+        send(client_fd, response, len, 0);
+        
     }
     else{
-        send(client_fd, "+FAIL\r\n", 7, 0);
+        TIME_FLAGS time = NO_TIME_FLAG;
+        int seconds = 0;
+        if(handle_set_flags(req, &seconds, &time) == 0){
+            store_set(req->args[0], req->args[1], time, seconds, type);
+            send(client_fd, "+OK\r\n", 5, 0);
+        }
+        else{
+            send(client_fd, "+FAIL\r\n", 7, 0);
+        }
     }
+    
 
 }
 
@@ -102,6 +136,7 @@ void handle_type(RespRequest *req, int client_fd){
         case TYPE_HASH:   send(client_fd, "+hash\r\n", 7, 0);   break;
         case TYPE_ZSET:   send(client_fd, "+zset\r\n", 7, 0);   break;
         case TYPE_SET:    send(client_fd, "+set\r\n", 6, 0);    break;
+        case TYPE_STREAM: send(client_fd, "+stream\r\n", 9, 0); break;
         default:          send(client_fd, "+none\r\n", 7, 0);   break;
     }
 }
@@ -168,11 +203,11 @@ int handle(RespRequest *req, int client_fd) {
     }
 
     // String & Number specific cmds
-    if (req->command == INCR) { return 0; }
-    if (req->command == DECR) { return 0; }
+    if (req->command == INCR)   { return 0; }
+    if (req->command == DECR)   { return 0; }
     if (req->command == APPEND) { return 0; }
     if (req->command == STRLEN) { return 0; }
-    if (req->command == MGET) { return 0; }
+    if (req->command == MGET)   { return 0; }
 
     // List cmds
     if (req->command == LPUSH) { 
@@ -195,6 +230,16 @@ int handle(RespRequest *req, int client_fd) {
     if (req->command == SMEMBERS)  { return 0; }
     if (req->command == SISMEMBER) { return 0; }
 
+    // Stream cmds
+    if (req->command == XADD){ 
+        handle_set(req, client_fd, TYPE_STREAM);
+        return 0;
+    }
+    if (req->command == XREAD)     { return 0; }
+    if (req->command == XRANGE)    { return 0; }
+    if (req->command == XGROUP)    { return 0; }
+        
+    
     // Default: UNKNOWN
     printf("Unknown command received\n");
     send(client_fd, "-ERR unknown command\r\n", 22, 0);
