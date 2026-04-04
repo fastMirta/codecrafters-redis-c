@@ -140,8 +140,6 @@ void generateId(Stream *stream, StreamEntry *streamEntry) {
     snprintf(idToString, sizeof(idToString), "%lld-%lld", finalMs, finalSeq);
     free(streamEntry->id);
     streamEntry->id = strdup(idToString);
-    stream->last_ms = finalMs;
-    stream->last_seq = finalSeq;
 }
 
 void handle_set_stream(RespRequest *req, int client_fd){
