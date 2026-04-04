@@ -76,6 +76,15 @@ void handle_set_stream(RespRequest *req, int client_fd){
         stream = (Stream*) entry->value;
     }
 
+    long long request_id_ms, request_id_seq;
+    sscanf(req->args[1], "%lld-%lld", &request_id_ms, &request_id_seq);
+
+    if(request_id_ms == 0 && request_id_seq == 0){
+        char *errorResp = "-ERR The ID specified in XADD must be greater than 0-0\r\n";
+        send(client_fd, errorResp, strlen(errorResp), 0);
+        return;
+    }
+
     StreamEntry *streamEntry = malloc(sizeof(StreamEntry));
     if(streamEntry == NULL) return;
     streamEntry->id = strdup(req->args[1]);
@@ -91,8 +100,7 @@ void handle_set_stream(RespRequest *req, int client_fd){
         stream->tail = streamEntry;
         store_set_stream(req->args[0], stream);
     } else {
-        long long request_id_ms, request_id_seq, last_request_ms, last_request_seq;
-        sscanf(req->args[1], "%lld-%lld", &request_id_ms, &request_id_seq);
+        long long last_request_ms, last_request_seq;
         sscanf(stream->tail->id, "%lld-%lld", &last_request_ms, &last_request_seq);
         if(request_id_ms < last_request_ms || (request_id_ms == last_request_ms && request_id_seq <= last_request_seq)){
             char *errorResp = "-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n";
