@@ -219,8 +219,8 @@ int get_length(char *array[]){
 
 
 void handle_set(RespRequest *req, int client_fd, RedisType type){
-    if(req->argc < 3){
-        printf("length smaller than 3");
+    if(req->argc < 2){
+        printf("length smaller than 2");
         return;
     }
     if(type == TYPE_STREAM){
