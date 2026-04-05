@@ -7,7 +7,7 @@
 #include <netinet/ip.h>
 #include <time.h>
 #include "utils.h"
-
+#include <errno.h>
 
 
 int handle_set_flags(RespRequest *req, int *expireAt, TIME_FLAGS *flag){
@@ -62,11 +62,6 @@ void handle_echo(RespRequest *req, int client_fd){
 
 }
 
-// int validate_stream_request(long long currentTime, Stream *stream, StreamEntry *StreamEntry){
-//     if(stream->last_ms > currentTime){
-//         stream->tail->id = stream->last_ms + 1;
-//     }
-// }
 
 int validate_stream_id(RespRequest *req, char **errorMsg){
     if(strcmp(req->args[1], "*") == 0){
@@ -181,9 +176,11 @@ void handle_set_stream(RespRequest *req, int client_fd){
     sscanf(streamEntry->id, "%lld-%lld", &request_id_ms, &request_id_seq);
 
     streamEntry->field_count = req->argc - 2;
-    streamEntry->fields = malloc(sizeof(char *) * (req->argc - 2));
+    streamEntry->fields = malloc(sizeof(char **) * (req->argc - 2));
     for(int i = 2; i < req->argc; i++){
-        streamEntry->fields[i - 2] = req->args[i];
+        printf("req->args[%d] = %s\n", i-2, req->args[i]);
+        streamEntry->fields[i-2] = malloc(strlen(req->args[i]) + 1);
+        strcpy(streamEntry->fields[i - 2], req->args[i]);
     }
 
     if(stream->head == NULL){
@@ -191,6 +188,7 @@ void handle_set_stream(RespRequest *req, int client_fd){
         stream->tail = streamEntry;
         stream->last_ms = request_id_ms;
         stream->last_seq = request_id_seq;
+        stream->length++;
         store_set_stream(req->args[0], stream);
     } else {
         if(request_id_ms < stream->last_ms || (request_id_ms == stream->last_ms && request_id_seq <= stream->last_seq)){
@@ -202,6 +200,7 @@ void handle_set_stream(RespRequest *req, int client_fd){
         stream->tail = streamEntry;
         stream->last_ms = request_id_ms;
         stream->last_seq = request_id_seq;
+        stream->length++;
     }
 
     char response[128];
@@ -273,6 +272,32 @@ void handle_type(RespRequest *req, int client_fd){
 
 void handle_unknown(RespRequest *req, int client_fd){
 
+}
+
+void printRequest(RespRequest *req){
+    printf("PRINTING REQUESTTT\n");
+    printf("argc: %d\n", req->argc);
+    for(int i = 0; i < req->argc; i++){
+        printf("Args: %s\n", req->args[i]);
+    }
+}
+
+void handle_xrange(RespRequest *req, int client_fd){
+    printRequest(req);
+    int count = 0;
+    printf("Key given: %s\n", req->args[0]);
+    char *response = streamEntry_toString(req->args[1], req->args[2], req->args[0], &count);
+    printf("response: %s\n", response);
+    printf("response length: %lu\n", strlen(response));
+    if(response == NULL){
+        printf("inside null\n");
+        char *emptyArray = "*0\r\n";
+        send(client_fd, "-ERR Internal error\r\n", 21, 0);
+        send(client_fd, emptyArray, strlen(emptyArray), 0);
+        return;
+    }
+    printf("outside null\n");
+    int test = send(client_fd, response, strlen(response), 0);
 }
 
 int handle(RespRequest *req, int client_fd) {
@@ -366,7 +391,11 @@ int handle(RespRequest *req, int client_fd) {
         return 0;
     }
     if (req->command == XREAD)     { return 0; }
-    if (req->command == XRANGE)    { return 0; }
+    if (req->command == XRANGE){
+        printf("ENTERED XRANGE\n");
+        handle_xrange(req, client_fd);
+        return 0;
+    }
     if (req->command == XGROUP)    { return 0; }
         
     

@@ -43,7 +43,7 @@ int parse(char *client_input, RespRequest *request){
     if(getPrefix(firstLine, prefix) != 0 || *prefix != '*'){return 1;}
 
     int loopLen = atoi(firstLinePtr + 1);
-    request->argc = loopLen;
+    request->argc = loopLen - 1;
 
     //jumping to the next line
     client_input = client_input + strlen(firstLine) + 2;

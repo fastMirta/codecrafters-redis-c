@@ -21,6 +21,7 @@ void printWord(char word[]){
 	}
 }
 
+
 int main(){
 	setbuf(stdout, NULL);
 	setbuf(stderr, NULL);	
@@ -29,9 +30,6 @@ int main(){
 	int server_fd, client_addr_len;
 	struct sockaddr_in client_addr;
 
-	char *wordTest = "NAN";
-	int num = atoi(wordTest);
-	printf("%d\n",num);
 
 	server_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (server_fd == -1)

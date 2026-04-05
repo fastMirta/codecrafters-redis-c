@@ -34,8 +34,7 @@ int validate_set(char *key, void *value, RedisType type){
 int validate_set_stream(int index){
     return(table[index]->type != TYPE_STREAM);
 }
-//redis-cli XADD stream_key 1526919030474-0 temperature 36 humidity 95
-//"1526919030474-0"
+
 void store_set_stream(char *key, Stream *stream){
     int index = hash(key);
     if (table[index] == NULL)
@@ -44,7 +43,6 @@ void store_set_stream(char *key, Stream *stream){
         free(table[index]->key);
         free(table[index]->value);
     }
-    
     table[index]->key = key;
     table[index]->value = stream; 
     table[index]->expires_at = 0;
@@ -64,7 +62,8 @@ void store_set(char *key, void *value, TIME_FLAGS flag, int seconds, RedisType t
     }
     
     table[index]->key = key;
-    table[index]->value = value; //redis-cli SET "myInt" 12 redis-cli GET "myInt"
+    table[index]->value = value; 
+
     table[index]->expires_at = 0;
     table[index]->type = type;
 
@@ -97,10 +96,82 @@ char *store_get(char *key) {
 }
 
 Entry *store_getEntry(char *key){
-     int index = hash(key);
+    printf("key in getEntry: %s\n", key);
+    int index = hash(key);
+    printf("Index: %d\n", index);
     if (table[index] == NULL)
         return NULL;
     return table[index];
+}
+
+int add_to_string(long long startMs, long long startSeq, long long endMs,
+     long long endSeq, long long currentMs, long long currentSeq){
+        // printf("Start Ms: %llu\n", startMs);
+        // printf("End Ms: %llu\n", endMs);
+        // printf("Start Seq: %llu\n", startSeq);
+        // printf("End Seq: %llu\n", endSeq);
+        // printf("Current Ms: %llu\n", currentMs);
+        // printf("Current Seq: %llu\n", currentSeq);
+        // printf("%d\n", !(currentMs >= startMs && (currentMs <= endMs && currentSeq <= endSeq)));
+    return !(currentMs >= startMs && (currentMs <= endMs && currentSeq <= endSeq));    
+}
+
+void printValue(StreamEntry *entry){
+    printf("id: %s\n", entry->id);
+    printf("field count in print value: %d\n", entry->field_count);
+    for(int i = 0; i < entry->field_count; i++){
+        printf("Field num: %d field name: %s\n", i, entry->fields[i]);
+    }
+}
+
+char* streamEntry_toString(char *idStart, char* idEnd, char *key, int *count){
+    char* entriesToPrint = malloc(1024);;
+    int offset = 0;
+
+    Entry *entry = store_getEntry(key);
+    if(entry == NULL){
+        printf("Entry wasnt FOUND\n");
+        return NULL;}
+    if(entry->type != TYPE_STREAM){
+        printf("Type is NOT stream: %d\n", entry->type);
+        printf("Key: %s\n", entry->key);
+        return NULL;}
+
+    long long firstMS, firstSeq, endMs, endSeq, currentMs, currentSeq;
+    Stream *stream = (Stream*)entry->value;
+    StreamEntry *newPtr = stream->head;
+    printValue(stream->head);
+    sscanf(idStart, "%lld-%lld", &firstMS, &firstSeq);
+    sscanf(idEnd, "%lld-%lld", &endMs, &endSeq);
+    
+    printf("stream length: %zu\n", stream->length);
+    for(int i = 0; i < stream->length; i++){
+        printValue(newPtr);
+        sscanf(newPtr->id, "%lld-%lld", &currentMs, &currentSeq);
+        if(add_to_string(firstMS, firstSeq, endMs, endSeq, currentMs, currentSeq) == 0){
+            //printf("EntriesToPrint 1: %s\n", entriesToPrint);
+            offset += snprintf(entriesToPrint + offset, 1024 - offset, "*2\r\n$%zu\r\n%s\r\n*%d\r\n", strlen(newPtr->id), newPtr->id, newPtr->field_count);
+            //printf("Offset: %d\n", offset);
+            (*count)++;
+            for(int j = 0; j < newPtr->field_count; j++){
+                //printf("Field count: %d\n", newPtr->field_count);
+                offset += snprintf(entriesToPrint + offset, 1024 - offset,
+                 "$%zu\r\n%s\r\n", strlen(newPtr->fields[j]), newPtr->fields[j]);
+                // printf("EntriesToPrint 2: %s\n", entriesToPrint);
+                // printf("Offset BELOW: %d\n", offset);
+            }
+        }
+        newPtr = newPtr->next;
+    }
+    printf("finished toString\n");
+    printf("entriesToPrint: %s\n", entriesToPrint);
+    char *result = malloc(1024 + 32);
+    int finalLen = snprintf(result, 1024 + 32, "*%d\r\n%s", *count, entriesToPrint);
+    free(entriesToPrint);
+    return result;
+    //redis-cli XADD some_key 1526985054069-0 temperature 36 humidity 95
+    //redis-cli XADD some_key 1526985054079-0 temperature 37 humidity 94
+    //redis-cli XRANGE some_key 1526985054069 1526985054079
 }
 
 
