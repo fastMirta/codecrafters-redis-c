@@ -113,7 +113,7 @@ int add_to_string(long long startMs, long long startSeq, long long endMs,
         // printf("Current Ms: %llu\n", currentMs);
         // printf("Current Seq: %llu\n", currentSeq);
         // printf("%d\n", !(currentMs >= startMs && (currentMs <= endMs && currentSeq <= endSeq)));
-    return !(currentMs >= startMs && (currentMs <= endMs && currentSeq <= endSeq));    
+    return !((currentMs >= startMs && currentSeq >= startSeq) && (currentMs <= endMs && currentSeq <= endSeq));    
 }
 
 void printValue(StreamEntry *entry){
