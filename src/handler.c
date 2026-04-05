@@ -282,11 +282,37 @@ void printRequest(RespRequest *req){
     }
 }
 
-void handle_xrange(RespRequest *req, int client_fd){
+void handle_xrange(RespRequest *req, int client_fd, REDIS_CMDS cmd){
     printRequest(req);
     int count = 0;
     printf("Key given: %s\n", req->args[0]);
-    char *response = streamEntry_toString(req->args[1], req->args[2], req->args[0], &count);
+    char *response = NULL;
+    if(cmd == XRANGE){
+        response = streamEntry_toString(req->args[1], req->args[2], req->args[0], &count);
+    }
+    else{
+        Entry *entry = store_getEntry(req->args[1]);
+        if(entry == NULL){
+            printf("Entry wasnt FOUND\n");
+            send(client_fd, "*0\r\n", 4, 0);
+            return;
+        }
+        printf("entry is not null\n");
+        Stream *stream = ((Stream*)entry->value);
+        /**    Stream *stream = (Stream*)entry->value;
+               StreamEntry *newPtr = stream->head; */
+        StreamEntry *nextPtr = stream->head;
+        while(strcmp(nextPtr->id, req->args[2]) != 0){// 1,2,3,4
+            nextPtr = nextPtr->next;
+        }
+        nextPtr = nextPtr->next;
+        if(nextPtr == NULL){
+            send(client_fd, "*0\r\n", 4, 0);
+        }
+        printf("Next IDDDDD: %s\n", nextPtr->id);
+        response = streamEntry_toString(nextPtr->id, "+", req->args[1], &count);
+    }
+    
     printf("response: %s\n", response);
     printf("response length: %lu\n", strlen(response));
     if(response == NULL){
@@ -298,6 +324,7 @@ void handle_xrange(RespRequest *req, int client_fd){
     }
     printf("outside null\n");
     int test = send(client_fd, response, strlen(response), 0);
+    free(response);
 }
 
 int handle(RespRequest *req, int client_fd) {
@@ -390,10 +417,14 @@ int handle(RespRequest *req, int client_fd) {
         handle_set(req, client_fd, TYPE_STREAM);
         return 0;
     }
-    if (req->command == XREAD)     { return 0; }
+    if (req->command == XREAD){ 
+        printf("Entered XREAD\n");
+        handle_xrange(req, client_fd, XREAD);
+        return 0; 
+    }
     if (req->command == XRANGE){
         printf("ENTERED XRANGE\n");
-        handle_xrange(req, client_fd);
+        handle_xrange(req, client_fd, XRANGE);
         return 0;
     }
     if (req->command == XGROUP)    { return 0; }

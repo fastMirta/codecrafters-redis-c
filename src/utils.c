@@ -132,11 +132,13 @@ char* streamEntry_toString(char *idStart, char* idEnd, char *key, int *count){
     Entry *entry = store_getEntry(key);
     if(entry == NULL){
         printf("Entry wasnt FOUND\n");
-        return NULL;}
+        return NULL;
+    }
     if(entry->type != TYPE_STREAM){
         printf("Type is NOT stream: %d\n", entry->type);
         printf("Key: %s\n", entry->key);
-        return NULL;}
+        return NULL;
+    }
     
     
     Stream *stream = (Stream*)entry->value;
