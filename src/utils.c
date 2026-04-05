@@ -178,17 +178,14 @@ char* streamEntry_toString(char *idStart, char* idEnd, char *key, int *count){
     for(int i = 0; i < stream->length; i++){
         printValue(newPtr);
         sscanf(newPtr->id, "%lld-%lld", &currentMs, &currentSeq);
+
         if(add_to_string(firstMS, firstSeq, endMs, endSeq, currentMs, currentSeq) == 0){
-            //printf("EntriesToPrint 1: %s\n", entriesToPrint);
-            offset += snprintf(entriesToPrint + offset, 1024 - offset, "*2\r\n$%zu\r\n%s\r\n*%d\r\n", strlen(newPtr->id), newPtr->id, newPtr->field_count);
-            //printf("Offset: %d\n", offset);
+            offset += snprintf(entriesToPrint + offset,
+                 1024 - offset, "*2\r\n$%zu\r\n%s\r\n*%d\r\n", strlen(newPtr->id), newPtr->id, newPtr->field_count);
             (*count)++;
             for(int j = 0; j < newPtr->field_count; j++){
-                //printf("Field count: %d\n", newPtr->field_count);
                 offset += snprintf(entriesToPrint + offset, 1024 - offset,
                  "$%zu\r\n%s\r\n", strlen(newPtr->fields[j]), newPtr->fields[j]);
-                // printf("EntriesToPrint 2: %s\n", entriesToPrint);
-                // printf("Offset BELOW: %d\n", offset);
             }
         }
         newPtr = newPtr->next;
@@ -196,14 +193,11 @@ char* streamEntry_toString(char *idStart, char* idEnd, char *key, int *count){
     printf("finished toString\n");
     printf("entriesToPrint: %s\n", entriesToPrint);
     char *result = malloc(1024 + 32);
-    int finalLen = snprintf(result, 1024 + 32, "*%d\r\n%s", *count, entriesToPrint);
+    int finalLen = snprintf(result, 1024 + 32, "*1\r\n*2\r\n$%zu\r\n%s\r\n*%d\r\n%s", strlen(key), key, *count, entriesToPrint);
     free(entriesToPrint);
     free(newPtr);
     
     return result;
-    //redis-cli XADD some_key 1526985054069-0 temperature 36 humidity 95
-    //redis-cli XADD some_key 1526985054079-0 temperature 37 humidity 94
-    //redis-cli XRANGE some_key 1526985054069 1526985054079
 }
 
 
