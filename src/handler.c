@@ -302,10 +302,9 @@ void handle_xrange(RespRequest *req, int client_fd, REDIS_CMDS cmd){
         /**    Stream *stream = (Stream*)entry->value;
                StreamEntry *newPtr = stream->head; */
         StreamEntry *nextPtr = stream->head;
-        while(strcmp(nextPtr->id, req->args[2]) != 0){// 1,2,3,4
+        while(isBigger(req->args[2], nextPtr->id) != 1){//redis-cli XREAD streams stream_key 0-0
             nextPtr = nextPtr->next;
         }
-        nextPtr = nextPtr->next;
         if(nextPtr == NULL){
             send(client_fd, "*0\r\n", 4, 0);
         }

@@ -124,6 +124,13 @@ void printValue(StreamEntry *entry){
     }
 }
 
+//checks if checkId is bigger than srcId
+int isBigger(char *srcId, char *checkId){
+    long long srcMs, srcSeq, checkMS, checkSeq;
+    sscanf(srcId, "%lld-%lld", &srcMs, &srcSeq);
+    sscanf(checkId, "%lld-%lld", &checkMS, &checkSeq);
+    return(checkMS > srcMs || (checkMS == srcMs && checkSeq > srcSeq));
+}
 
 char* streamEntry_toString(char *idStart, char* idEnd, char *key, int *count){
     char* entriesToPrint = malloc(1024);;

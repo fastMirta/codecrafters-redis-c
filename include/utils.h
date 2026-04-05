@@ -55,6 +55,7 @@ long long get_current_time_ms();
 int add_to_string(long long startMs, long long startSeq, long long endMs,
      long long endSeq, long long currentMs, long long currentSeq);
 char* streamEntry_toString(char *idStart, char* idEnd, char *key,  int *count);
+int isBigger(char *srcId, char *checkId);
 
 
 #endif
