@@ -124,6 +124,7 @@ void printValue(StreamEntry *entry){
     }
 }
 
+
 char* streamEntry_toString(char *idStart, char* idEnd, char *key, int *count){
     char* entriesToPrint = malloc(1024);;
     int offset = 0;
@@ -136,13 +137,33 @@ char* streamEntry_toString(char *idStart, char* idEnd, char *key, int *count){
         printf("Type is NOT stream: %d\n", entry->type);
         printf("Key: %s\n", entry->key);
         return NULL;}
-
-    long long firstMS, firstSeq, endMs, endSeq, currentMs, currentSeq;
+    
+    
     Stream *stream = (Stream*)entry->value;
     StreamEntry *newPtr = stream->head;
+
+    long long firstMS, firstSeq, endMs, endSeq, currentMs, currentSeq;
+    if(strcmp(idStart, "-") == 0 && strcmp(idEnd, "+") != 0){
+        sscanf(newPtr->id, "%lld-%lld", &firstMS, &firstSeq);
+        sscanf(idEnd, "%lld-%lld", &endMs, &endSeq);
+        printf("Entered - only\n");
+        printf("start ms: %lld, start seq: %lld, end ms: %lld, end seq: %lld\n", firstMS, firstSeq, endMs, endSeq);
+    }
+    else if(strcmp(idStart, "-") != 0 && strcmp(idEnd, "+") == 0){
+        sscanf(idStart, "%lld-%lld", &firstMS, &firstSeq);
+        printf("Tail is null? %d\n", stream->tail == NULL);
+        sscanf(stream->tail->id, "%lld-%lld", &endMs, &endSeq);
+        printf("Entered + only\n");
+        printf("start ms: %lld, start seq: %lld, end ms: %lld, end seq: %lld\n", firstMS, firstSeq, endMs, endSeq);
+    }
+    else if(strcmp(idStart, "-") != 0 && strcmp(idEnd, "+") != 0) {
+        sscanf(idStart, "%lld-%lld", &firstMS, &firstSeq);
+        sscanf(idEnd, "%lld-%lld", &endMs, &endSeq);
+        printf("Entered none only\n");
+        printf("start ms: %lld, start seq: %lld, end ms: %lld, end seq: %lld\n", firstMS, firstSeq, endMs, endSeq);
+    }
     printValue(stream->head);
-    sscanf(idStart, "%lld-%lld", &firstMS, &firstSeq);
-    sscanf(idEnd, "%lld-%lld", &endMs, &endSeq);
+
     
     printf("stream length: %zu\n", stream->length);
     for(int i = 0; i < stream->length; i++){
@@ -168,6 +189,8 @@ char* streamEntry_toString(char *idStart, char* idEnd, char *key, int *count){
     char *result = malloc(1024 + 32);
     int finalLen = snprintf(result, 1024 + 32, "*%d\r\n%s", *count, entriesToPrint);
     free(entriesToPrint);
+    free(newPtr);
+    
     return result;
     //redis-cli XADD some_key 1526985054069-0 temperature 36 humidity 95
     //redis-cli XADD some_key 1526985054079-0 temperature 37 humidity 94
