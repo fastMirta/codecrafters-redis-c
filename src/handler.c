@@ -309,7 +309,7 @@ void handle_xrange(RespRequest *req, int client_fd, REDIS_CMDS cmd){
             send(client_fd, "*0\r\n", 4, 0);
         }
         printf("Next IDDDDD: %s\n", nextPtr->id);
-        response = streamEntry_toString(nextPtr->id, "+", req->args[1], &count);
+        response = streamEntry_XREAD_toString(nextPtr->id, "+", req->args[1], &count);
     }
     
     printf("response: %s\n", response);
