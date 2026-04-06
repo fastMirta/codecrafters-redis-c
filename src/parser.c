@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <string.h>
-#include "parser.h"
 #include <ctype.h>
 #include <stdlib.h>
+#include "parser.h"
+#include "utils.h"
 //0 = success| 1 = failure
 
 
@@ -107,15 +108,6 @@ int parse(char *client_input, RespRequest *request){
     return 0;
     
 }
-/**
- * Create (ECHO)Handler and add this to it:
- * if(i == 0){
-            in = strlen(firstLine);
-      - 2;
-            currentMethod = findRedisCmd(firstLine);
-            if(currentMethod == ECHO && loopLen != 2){return;}
-        }
- */
 
 //Copies the line until reaches the end of the word or the end of the line (symbolized by \r\n)
 char* getLine(char *client_input){
