@@ -5,11 +5,7 @@
 #include <stdlib.h>
 //0 = success| 1 = failure
 
-/**Changes all the characters of a given string to upper case */
-void toUpper(char *str){
-	for (int i = 0; str[i]; i++)
-		str[i] = toupper((unsigned char)str[i]);
-}
+
 
 //TODO: maybe change type to int and return 0 for work 1/-1 for didnt
 int parse(char *client_input, RespRequest *request){

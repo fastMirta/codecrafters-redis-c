@@ -1,8 +1,9 @@
 #ifndef UTILS_H
 #define UTILS_H
+
 #include <time.h>
 #include <string.h>
-
+#include <ctype.h>
 
 #define TABLE_SIZE 1024
 
@@ -46,6 +47,7 @@ typedef struct Stream {
 
 extern Entry *table[TABLE_SIZE];
 
+void toUpper(char *str);
 int hash(char *key);
 void store_set_stream(char *key, Stream *stream);
 void store_set(char *key, void *value, TIME_FLAGS flag, int seconds, RedisType type);
@@ -57,6 +59,7 @@ int add_to_string(long long startMs, long long startSeq, long long endMs,
 char* streamEntry_toString(char *idStart, char* idEnd, char *key,  int *count);
 char* streamEntry_XREAD_toString(char *idStart, char* idEnd, char *key, int *count);
 int isBigger(char *srcId, char *checkId);
+char* streamEntry_XREAD_Mul_toString(int len, char *keyArray[], char *idArrays[]);
 
 
 #endif

@@ -5,6 +5,12 @@
 
 Entry *table[TABLE_SIZE] = {NULL};
 
+/**Changes all the characters of a given string to upper case */
+void toUpper(char *str){
+	for (int i = 0; str[i]; i++)
+		str[i] = toupper((unsigned char)str[i]);
+}
+
 long long get_current_time_ms() {
     struct timeval tv;
     gettimeofday(&tv, NULL);
@@ -104,16 +110,12 @@ Entry *store_getEntry(char *key){
     return table[index];
 }
 
+//0-5 1-0
 int add_to_string(long long startMs, long long startSeq, long long endMs,
      long long endSeq, long long currentMs, long long currentSeq){
-        // printf("Start Ms: %llu\n", startMs);
-        // printf("End Ms: %llu\n", endMs);
-        // printf("Start Seq: %llu\n", startSeq);
-        // printf("End Seq: %llu\n", endSeq);
-        // printf("Current Ms: %llu\n", currentMs);
-        // printf("Current Seq: %llu\n", currentSeq);
-        // printf("%d\n", !(currentMs >= startMs && (currentMs <= endMs && currentSeq <= endSeq)));
-    return !((currentMs >= startMs && currentSeq >= startSeq) && (currentMs <= endMs && currentSeq <= endSeq));    
+        
+    return !((currentMs > startMs ||(currentMs == startMs && currentSeq > startSeq))
+     && ((currentMs < endMs) || (currentMs == endMs && currentSeq <= endSeq)));    
 }
 
 void printValue(StreamEntry *entry){
@@ -209,7 +211,7 @@ char* streamEntry_XREAD_toString(char *idStart, char* idEnd, char *key, int *cou
 
     Entry *entry = store_getEntry(key);
     if(entry == NULL){
-        printf("Entry wasnt FOUND\n");
+        printf("Entry wasnt FOUND\n"); 
         return NULL;
     }
     if(entry->type != TYPE_STREAM){
@@ -263,14 +265,49 @@ char* streamEntry_XREAD_toString(char *idStart, char* idEnd, char *key, int *cou
     }
     printf("finished toString\n");
     printf("entriesToPrint: %s\n", entriesToPrint);
-    char *result = malloc(1024 + 32);
-    int finalLen = snprintf(result, 1024 + 32, "*1\r\n*2\r\n$%zu\r\n%s\r\n*%d\r\n%s", strlen(key), key, *count, entriesToPrint);
-    free(entriesToPrint);
-    free(newPtr);
     
-    return result;
+    
+    return entriesToPrint;
 }
 
+
+char* streamEntry_XREAD_Mul_toString(int len, char *keyArray[], char *idArrays[]) {
+    char **blobs  = malloc(len * sizeof(char*));
+    int  *counts  = calloc(len, sizeof(int));
+
+    printf("Entered bs\n");
+    for (int i = 0; i < len; i++) {
+        printf("id: %s\n", idArrays[i]);
+        blobs[i] = streamEntry_XREAD_toString(idArrays[i], "+", keyArray[i], &counts[i]);
+        if (blobs[i] == NULL) {
+            for (int j = 0; j < i; j++) free(blobs[j]);
+            free(blobs); free(counts);
+            return NULL;
+        }
+    }
+    
+    int totalSize = 32; 
+    for (int i = 0; i < len; i++)
+        totalSize += 32 + strlen(keyArray[i]) + strlen(blobs[i]);
+
+    char *result = malloc(totalSize);
+    int offset = 0;
+
+    offset += snprintf(result + offset, totalSize - offset, "*%d\r\n", len);
+
+    for (int i = 0; i < len; i++) {
+        offset += snprintf(result + offset, totalSize - offset,
+            "*2\r\n$%zu\r\n%s\r\n*%d\r\n%s",
+            strlen(keyArray[i]), keyArray[i],
+            counts[i],
+            blobs[i]);
+        free(blobs[i]); 
+    }
+
+    free(blobs);
+    free(counts);
+    return result; 
+}
 
 
 
