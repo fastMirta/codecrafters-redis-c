@@ -136,6 +136,10 @@ int isBigger(char *srcId, char *checkId){
     long long srcMs, srcSeq, checkMS, checkSeq;
     sscanf(srcId, "%lld-%lld", &srcMs, &srcSeq);
     sscanf(checkId, "%lld-%lld", &checkMS, &checkSeq);
+    printf("Check ms: %lld\n", checkMS);
+    printf("Check seq: %lld\n", checkSeq);
+    printf("Src ms: %lld\n", srcMs);
+    printf("Src seq: %lld\n", srcSeq);
     return(checkMS > srcMs || (checkMS == srcMs && checkSeq > srcSeq));
 }
 

@@ -105,7 +105,7 @@ void try_deliver_stream_data(Client *client) {
 }
 
 
-int validate_stream_id(RespRequest *req, Stream *stream, char **errorMsg){
+int validate_stream_id(RespRequest *req, StreamEntry *tail, char **errorMsg){
     if(strcmp(req->args[1], "*") == 0){
         return 0;
     }
@@ -142,15 +142,12 @@ int validate_stream_id(RespRequest *req, Stream *stream, char **errorMsg){
         *errorMsg = "-ERR The ID specified in XADD must be greater than 0-0\r\n";
         return 1;
     }
-
-    StreamEntry *testPtr = stream->head;
-    for(int i = 0; i < stream->length; i++){
-        if(strcmp(testPtr->id, req->args[1]) == 0){
-            *errorMsg = "-ERR The ID specified in XADD is already exists\r\n";
-            return 1;
-        }
+    
+    if(!isBigger(tail->id, req->args[1])){
+        *errorMsg = "-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n";
+        return 1;
     }
-
+    printf("is BIGGER %d\n", isBigger(tail->id, req->args[1]));
     return 0;
 }
 
@@ -205,18 +202,25 @@ void handle_set_stream(RespRequest *req, int client_fd){
         stream = (Stream*) entry->value;
     }
 
-    if(validate_stream_id(req, stream, &errorResp) == 1){
-        printf("error respond: %s\n", errorResp);
-        send(client_fd, errorResp, strlen(errorResp), 0);
-        return;
-    }
     StreamEntry *streamEntry = malloc(sizeof(StreamEntry));
     streamEntry->id = strdup(req->args[1]);
     streamEntry->next = NULL;
 
+    if(stream->tail != NULL){
+        printValue(stream->tail);
+        if(validate_stream_id(req, stream->tail, &errorResp) == 1){
+            printf("error respond: %s\n", errorResp);
+            send(client_fd, errorResp, strlen(errorResp), 0);
+            return;
+        }
+    }
+
     if(strchr(req->args[1], '*') != NULL){
         generateId(stream, streamEntry);
     }
+
+
+
 
     long long request_id_ms, request_id_seq;
     sscanf(streamEntry->id, "%lld-%lld", &request_id_ms, &request_id_seq);
