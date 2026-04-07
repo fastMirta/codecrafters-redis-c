@@ -100,8 +100,11 @@ Entry *store_getEntry(char *key){
     printf("key in getEntry: %s\n", key);
     int index = hash(key);
     printf("Index: %d\n", index);
-    if (table[index] == NULL)
+    if (table[index] == NULL){
+        printf("Value doesnt exist in getEntry\n");
         return NULL;
+    }
+        
     return table[index];
 }
 

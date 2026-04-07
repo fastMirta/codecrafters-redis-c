@@ -454,6 +454,7 @@ int handle_single_xread(RespRequest *req, Client *client, int *count, char **res
         
     }
     else{
+        printf("Everything is broken: %s\n", req->args[1]);
         entry = store_getEntry(req->args[1]);
         if(entry == NULL){
             printf("Entry wasnt FOUND\n");
