@@ -17,6 +17,7 @@
 
 
 const char *response = "+PONG\r\n";
+Client *clients[MAX_CLIENTS]; 
 
 void printWord(char word[]){
     printf("%s", word);
@@ -33,7 +34,6 @@ int main() {
     setbuf(stderr, NULL);   
     
     struct pollfd watch_list[MAX_CLIENTS];
-    Client *clients[MAX_CLIENTS]; 
     
 	//Init client array
     for (int i = 0; i < MAX_CLIENTS; i++) clients[i] = NULL;
@@ -77,24 +77,14 @@ int main() {
 
         for (int i = 1; i < active_fds; i++) {
             //printf("Clients timeout: %lld\n", now);
-            // if (clients[i] && clients[i]->is_blocked && now >= clients[i]->timeout_at) {
-            //     send(watch_list[i].fd, "$-1\r\n", 5, 0);
-            //     clients[i]->is_blocked = 0;
-            //     printf("Checking client %d: now=%lld, target=%lld\n", 
-            //         i, now, clients[i]->timeout_at);
-            //     printf("Client at fd %d timed out\n", watch_list[i].fd);
-            // }
-
-            if (clients[i] && clients[i]->is_blocked) {
-            printf("Checking client %d: now=%lld, target=%lld\n", 
-                    i, now, clients[i]->timeout_at);
-            
-            if (now >= clients[i]->timeout_at) {
-                printf("TIMEOUT REACHED for client %d\n", i);
-                send(watch_list[i].fd, "*-1\r\n", 5, 0); 
+            if (clients[i] && clients[i]->is_blocked && now >= clients[i]->timeout_at) {
+                send(watch_list[i].fd, "$-1\r\n", 5, 0);
                 clients[i]->is_blocked = 0;
+                printf("Checking client %d: now=%lld, target=%lld\n", 
+                    i, now, clients[i]->timeout_at);
+                printf("Client at fd %d timed out\n", watch_list[i].fd);
             }
-        }
+
         }
 
         if (poll_count <= 0) continue; 

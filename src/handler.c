@@ -11,7 +11,7 @@
 #include "utils.h"
 
 
-Client *clients[MAX_CLIENTS];
+extern Client *clients[MAX_CLIENTS];
 
 int handle_set_flags(RespRequest *req, int *expireAt, TIME_FLAGS *flag){
     printf("\n");
@@ -63,6 +63,45 @@ void handle_echo(RespRequest *req, int client_fd){
     snprintf(response, sizeof(response), "$%zu\r\n%s\r\n", strlen(req->args[0]), req->args[0]);
 	send(client_fd, response, strlen(response), 0);
 
+}
+
+char* wrapXreadResponse(const char* key, const char* messages, int msgCount) {
+    if (msgCount == 0) return strdup("*0\r\n");
+
+    char *finalResponse = malloc(strlen(messages) + strlen(key) + 64); 
+    if (!finalResponse) return NULL;
+
+    sprintf(finalResponse, "*1\r\n*2\r\n$%zu\r\n%s\r\n*%d\r\n%s", 
+            strlen(key), key, msgCount, messages);
+    
+    return finalResponse;
+}
+
+
+void try_deliver_stream_data(Client *client) {
+    if (!client->is_blocked || !client->waiting_for_key || !client->min_id) return;
+
+    int count = 0;
+    char *messages = streamEntry_XREAD_toString(client->min_id, "+", client->waiting_for_key, &count);
+
+    if (messages != NULL && count > 0) {
+        char *response = wrapXreadResponse(client->waiting_for_key, messages, count);
+        if (response) {
+            send(client->fd, response, strlen(response), 0);
+            
+            client->is_blocked = 0;
+            free(client->waiting_for_key);
+            client->waiting_for_key = NULL;
+            free(client->min_id);
+            client->min_id = NULL;
+
+            free(response);
+        }
+        free(messages);
+        printf("Woke up blocked client on FD %d with %d messages\n", client->fd, count);
+    } else {
+        if (messages) free(messages);
+    }
 }
 
 
@@ -162,12 +201,6 @@ void handle_set_stream(RespRequest *req, int client_fd){
     }
 
     StreamEntry *streamEntry = malloc(sizeof(StreamEntry));
-    if(streamEntry == NULL){
-        char *err = "-ERR Out of memory\r\n";
-        send(client_fd, err, strlen(err), 0);
-        return;
-    }
-
     streamEntry->id = strdup(req->args[1]);
     streamEntry->next = NULL;
 
@@ -181,9 +214,7 @@ void handle_set_stream(RespRequest *req, int client_fd){
     streamEntry->field_count = req->argc - 2;
     streamEntry->fields = malloc(sizeof(char **) * (req->argc - 2));
     for(int i = 2; i < req->argc; i++){
-        printf("req->args[%d] = %s\n", i-2, req->args[i]);
-        streamEntry->fields[i-2] = malloc(strlen(req->args[i]) + 1);
-        strcpy(streamEntry->fields[i - 2], req->args[i]);
+        streamEntry->fields[i-2] = strdup(req->args[i]);
     }
 
     if(stream->head == NULL){
@@ -194,11 +225,6 @@ void handle_set_stream(RespRequest *req, int client_fd){
         stream->length++;
         store_set_stream(req->args[0], stream);
     } else {
-        if(request_id_ms < stream->last_ms || (request_id_ms == stream->last_ms && request_id_seq <= stream->last_seq)){
-            char *err = "-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n";
-            send(client_fd, err, strlen(err), 0);
-            return;
-        }
         stream->tail->next = streamEntry;
         stream->tail = streamEntry;
         stream->last_ms = request_id_ms;
@@ -206,9 +232,27 @@ void handle_set_stream(RespRequest *req, int client_fd){
         stream->length++;
     }
 
+
     char response[128];
     int len = snprintf(response, sizeof(response), "$%zu\r\n%s\r\n", strlen(streamEntry->id), streamEntry->id);
     send(client_fd, response, len, 0);
+
+    printf("Boyya\n");
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        printf("client is null? %d\n", clients[i] == NULL);
+        if (clients[i] && clients[i]->is_blocked) {
+            printf("DEBUG: Found blocked client on FD %d waiting for %s. XADD key is %s\n", 
+                clients[i]->fd, clients[i]->waiting_for_key, req->args[0]);
+            if (clients[i]->waiting_for_key != NULL && strcmp(clients[i]->waiting_for_key, req->args[0]) == 0) {
+                printf("DEBUG: Match found! Calling try_deliver...\n");
+                try_deliver_stream_data(clients[i]);
+            }
+        }
+
+        if(clients[i]){
+            printf("is blocked? %d\n", clients[i]->is_blocked);
+        }
+    }
 }
 
 int get_length(char *array[]){
@@ -312,17 +356,6 @@ int is_multiple_key(RespRequest *req, int *streamsLength, int *streamIndex){
     return 1;
 }
 
-char* wrapXreadResponse(const char* key, const char* messages, int msgCount) {
-    if (msgCount == 0) return strdup("*0\r\n");
-
-    char *finalResponse = malloc(strlen(messages) + strlen(key) + 64); 
-    if (!finalResponse) return NULL;
-
-    sprintf(finalResponse, "*1\r\n*2\r\n$%zu\r\n%s\r\n*%d\r\n%s", 
-            strlen(key), key, msgCount, messages);
-    
-    return finalResponse;
-}
 
 /**Checks if the specified request contains Block
  * 1 = false
@@ -394,6 +427,7 @@ int handle_single_xread(RespRequest *req, Client *client, int *count, char *resp
             client->min_id = strdup(req->args[4]);
             client->waiting_for_key = strdup(req->args[3]);
             return 1;
+            //redis-cli XADD streamKey 0-2
         }
         printf("entry is not null\n");
 
