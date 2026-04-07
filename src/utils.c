@@ -110,7 +110,7 @@ Entry *store_getEntry(char *key){
     return table[index];
 }
 
-//0-5 1-0
+//
 int add_to_string(long long startMs, long long startSeq, long long endMs,
      long long endSeq, long long currentMs, long long currentSeq){
         

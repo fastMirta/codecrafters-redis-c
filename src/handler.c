@@ -309,6 +309,19 @@ int is_multiple_key(RespRequest *req, int *streamsLength, int *streamIndex){
     return 1;
 }
 
+char* wrapXreadResponse(const char* key, const char* messages, int msgCount) {
+    if (msgCount == 0) return strdup("*0\r\n");
+
+    
+    char *finalResponse = malloc(strlen(messages) + strlen(key) + 64); 
+    if (!finalResponse) return NULL;
+
+sprintf(finalResponse, "*1\r\n*2\r\n$%zu\r\n%s\r\n*%d\r\n%s", 
+            strlen(key), key, msgCount, messages);
+    
+    return finalResponse;
+}
+
 void handle_stream_print(RespRequest *req, int client_fd, REDIS_CMDS cmd){
     printRequest(req);
     int count = 0;
@@ -320,15 +333,16 @@ void handle_stream_print(RespRequest *req, int client_fd, REDIS_CMDS cmd){
     else{
         int streamsLength = 0;
         int streamIndex = 0;
-        printf("is even? %d\n", is_multiple_key(req, &streamsLength, &streamIndex));
+        int isMul = is_multiple_key(req, &streamsLength, &streamIndex);
+        printf("is even? %d\n", isMul);
         printf("%d\n", streamsLength > 0 && streamIndex > 0);
         printf("length: %d, index: %d\n", streamsLength, streamIndex);
-        if(is_multiple_key(req, &streamsLength, &streamIndex) == 0 && streamsLength > 0 && streamIndex >= 0){
+        if(isMul == 0 && streamsLength > 0 && streamIndex >= 0){
             streamIndex++;
             char **keyArray = malloc(streamsLength/2 * sizeof(char*)),
              **idArray = malloc(streamsLength/2 * sizeof(char*));
             
-            printf("Stream length: %d\n", streamsLength);
+            printf("Stream length in multiple: %d\n", streamsLength);
             for(int i = streamIndex; i < streamsLength + streamIndex; i++){
                 keyArray[i - streamIndex] = malloc(strlen(req->args[i]) + 1);
                 strcpy(keyArray[i - streamIndex], req->args[i]);
@@ -350,16 +364,20 @@ void handle_stream_print(RespRequest *req, int client_fd, REDIS_CMDS cmd){
                 return;
             }
             printf("entry is not null\n");
-            Stream *stream = ((Stream*)entry->value);
-            StreamEntry *nextPtr = stream->head;
-            while(isBigger(req->args[2], nextPtr->id) != 1){
-                nextPtr = nextPtr->next;
-            }
-            if(nextPtr == NULL){
+
+            char *temp_messages = streamEntry_XREAD_toString(req->args[2], "+", req->args[1], &count);
+
+            if (count == 0 || temp_messages == NULL) {
                 send(client_fd, "*0\r\n", 4, 0);
+                if(temp_messages) free(temp_messages);
+                return;
             }
-            printf("Next IDDDDD: %s\n", nextPtr->id);
-            response = streamEntry_XREAD_toString(nextPtr->id, "+", req->args[1], &count);
+
+            response = wrapXreadResponse(req->args[1], temp_messages, count);
+            free(temp_messages);
+
+
+                    
         }
         
         
