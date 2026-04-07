@@ -110,12 +110,16 @@ Entry *store_getEntry(char *key){
     return table[index];
 }
 
-//
+//isXrange = 0 in xrange, isXrange = 1 in xread
 int add_to_string(long long startMs, long long startSeq, long long endMs,
-     long long endSeq, long long currentMs, long long currentSeq){
+     long long endSeq, long long currentMs, long long currentSeq, int isXrange){
+
+    if(isXrange == 1){
+        return !((currentMs > startMs ||(currentMs == startMs && currentSeq > startSeq))
+     && ((currentMs < endMs) || (currentMs == endMs && currentSeq <= endSeq)));   
+    }
         
-    return !((currentMs > startMs ||(currentMs == startMs && currentSeq > startSeq))
-     && ((currentMs < endMs) || (currentMs == endMs && currentSeq <= endSeq)));    
+    return !((currentMs >= startMs && currentSeq >= startSeq) && (currentMs <= endMs && currentSeq <= endSeq));       
 }
 
 void printValue(StreamEntry *entry){
@@ -183,7 +187,7 @@ char* streamEntry_toString(char *idStart, char* idEnd, char *key, int *count){
         printValue(newPtr);
         sscanf(newPtr->id, "%lld-%lld", &currentMs, &currentSeq);
         
-        if(add_to_string(firstMS, firstSeq, endMs, endSeq, currentMs, currentSeq) == 0){
+        if(add_to_string(firstMS, firstSeq, endMs, endSeq, currentMs, currentSeq, 0) == 0){
             offset += snprintf(entriesToPrint + offset,
                  1024 - offset, "*2\r\n$%zu\r\n%s\r\n*%d\r\n", strlen(newPtr->id), newPtr->id, newPtr->field_count);
             (*count)++;
@@ -252,7 +256,7 @@ char* streamEntry_XREAD_toString(char *idStart, char* idEnd, char *key, int *cou
         printValue(newPtr);
         sscanf(newPtr->id, "%lld-%lld", &currentMs, &currentSeq);
         
-        if(add_to_string(firstMS, firstSeq, endMs, endSeq, currentMs, currentSeq) == 0){
+        if(add_to_string(firstMS, firstSeq, endMs, endSeq, currentMs, currentSeq, 1) == 0){
             offset += snprintf(entriesToPrint + offset,
                  1024 - offset, "*2\r\n$%zu\r\n%s\r\n*%d\r\n", strlen(newPtr->id), newPtr->id, newPtr->field_count);
             (*count)++;
