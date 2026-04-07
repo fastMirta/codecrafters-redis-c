@@ -146,7 +146,7 @@ int validate_stream_id(RespRequest *req, Stream *stream, char **errorMsg){
     StreamEntry *testPtr = stream->head;
     for(int i = 0; i < stream->length; i++){
         if(strcmp(testPtr->id, req->args[1]) == 0){
-            *errorMsg = "-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n";
+            *errorMsg = "-ERR The ID specified in XADD is already exists\r\n";
             return 1;
         }
     }
@@ -206,6 +206,7 @@ void handle_set_stream(RespRequest *req, int client_fd){
     }
 
     if(validate_stream_id(req, stream, &errorResp) == 1){
+        printf("error respond: %s\n", errorResp);
         send(client_fd, errorResp, strlen(errorResp), 0);
         return;
     }
