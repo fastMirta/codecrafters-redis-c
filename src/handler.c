@@ -382,7 +382,7 @@ int hasBlock(RespRequest *request, int *blockIndex){
 /**Builds appropriate response for xread with multiple streams
  * 
  */
-void handle_multiple_xread(RespRequest *req, char *response, int streamIndex, int streamsLength){
+void handle_multiple_xread(RespRequest *req, char **response, int streamIndex, int streamsLength){
     streamIndex++;
     char **keyArray = malloc(streamsLength/2 * sizeof(char*)),
         **idArray = malloc(streamsLength/2 * sizeof(char*));
@@ -399,14 +399,14 @@ void handle_multiple_xread(RespRequest *req, char *response, int streamIndex, in
         printf("idArray[%d] = %s\n", i - streamIndex - streamsLength, idArray[i - streamIndex - streamsLength]);
     }
     printf("ENTERED THE GOAT 1 AND only XREAD WITH mul @param\n");
-    response = streamEntry_XREAD_Mul_toString(streamsLength, keyArray, idArray);
+    *response = streamEntry_XREAD_Mul_toString(streamsLength, keyArray, idArray);
 }
 
 /**Handles single xread cmd (with or without block keyword)
  * False = 1
  * True = 0
  */
-int handle_single_xread(RespRequest *req, Client *client, int *count, char *response){
+int handle_single_xread(RespRequest *req, Client *client, int *count, char **response){
     Entry *entry = NULL;
     char *temp_messages = NULL;
     int blockIndex = 0;
@@ -432,10 +432,8 @@ int handle_single_xread(RespRequest *req, Client *client, int *count, char *resp
 
         temp_messages = streamEntry_XREAD_toString(req->args[4], "+", req->args[3], count);
         if (temp_messages != NULL && *count > 0) {
-            char *resp = wrapXreadResponse(req->args[3], temp_messages, *count);
-            send(client->fd, resp, strlen(resp), 0);
+            *response = wrapXreadResponse(req->args[3], temp_messages, *count);
             free(temp_messages);
-            free(resp);
             return 0;
         }
         else{
@@ -475,7 +473,7 @@ int handle_single_xread(RespRequest *req, Client *client, int *count, char *resp
     }
     
     
-    response = wrapXreadResponse(req->args[1], temp_messages, *count);
+    *response = wrapXreadResponse(req->args[1], temp_messages, *count);
     free(temp_messages);   
     return 0;
 }
@@ -483,7 +481,7 @@ int handle_single_xread(RespRequest *req, Client *client, int *count, char *resp
 /**Handles Xread cmd (single and multiple)
  * @return 0 if worked 1 if didnt
  */
-int handle_xread(RespRequest *req, Client *client, char *response, int *count){
+int handle_xread(RespRequest *req, Client *client, char **response, int *count){
     int blockIndex = 0;
     int streamsLength = 0;
     int streamIndex = 0;
@@ -493,6 +491,9 @@ int handle_xread(RespRequest *req, Client *client, char *response, int *count){
     printf("length: %d, index: %d\n", streamsLength, streamIndex);
     if(isMul == 0 && streamsLength > 0 && streamIndex >= 0){
         handle_multiple_xread(req, response, streamIndex, streamsLength);
+        if(*response != NULL){
+            return 0;
+        }
         if(hasBlock(req, &blockIndex) == 0 && *count == 0){
             int ms_timeout = atoi(req->args[blockIndex + 1]);
             client->is_blocked = 1;
@@ -506,6 +507,7 @@ int handle_xread(RespRequest *req, Client *client, char *response, int *count){
             return 1;
         
         }
+        return 0;
     }
     else{
         printf("Finished single xread\n");
@@ -524,7 +526,7 @@ void handle_stream_print(RespRequest *req, Client *client, REDIS_CMDS cmd){
         response = streamEntry_toString(req->args[1], req->args[2], req->args[0], &count);
     }
     else{
-        int result = handle_xread(req, client, response, &count);
+        int result = handle_xread(req, client, &response, &count);
         if(result == 1){
             printf("Return cuz xread is false\n");
             return;
