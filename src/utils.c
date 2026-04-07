@@ -11,11 +11,6 @@ void toUpper(char *str){
 		str[i] = toupper((unsigned char)str[i]);
 }
 
-long long get_current_time_ms() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (long long)(tv.tv_sec) * 1000 + (tv.tv_usec / 1000);
-}
 
 int hash(char *key) {
     int hash = 0;
@@ -110,7 +105,10 @@ Entry *store_getEntry(char *key){
     return table[index];
 }
 
-//isXrange = 0 in xrange, isXrange = 1 in xread
+/**Checks if need 
+ * isXrange = 0 in xrange, isXrange = 1 in xread
+ */
+
 int add_to_string(long long startMs, long long startSeq, long long endMs,
      long long endSeq, long long currentMs, long long currentSeq, int isXrange){
 
@@ -210,7 +208,7 @@ char* streamEntry_toString(char *idStart, char* idEnd, char *key, int *count){
 
 
 char* streamEntry_XREAD_toString(char *idStart, char* idEnd, char *key, int *count){
-       char* entriesToPrint = malloc(1024);;
+    char* entriesToPrint = malloc(1024);
     int offset = 0;
 
     Entry *entry = store_getEntry(key);

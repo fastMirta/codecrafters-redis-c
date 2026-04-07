@@ -1,14 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "parser.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <time.h>
-#include "utils.h"
 #include <errno.h>
+#include "handler.h"
+#include "parser.h"
+#include "utils.h"
 
+
+Client *clients[MAX_CLIENTS];
 
 int handle_set_flags(RespRequest *req, int *expireAt, TIME_FLAGS *flag){
     printf("\n");
@@ -218,7 +221,7 @@ int get_length(char *array[]){
 }
 
 
-void handle_set(RespRequest *req, int client_fd, RedisType type){
+void handle_set(RespRequest *req, RedisType type, int client_fd){
     if(req->argc < 2){
         printf("length smaller than 2");
         return;
@@ -312,95 +315,200 @@ int is_multiple_key(RespRequest *req, int *streamsLength, int *streamIndex){
 char* wrapXreadResponse(const char* key, const char* messages, int msgCount) {
     if (msgCount == 0) return strdup("*0\r\n");
 
-    
     char *finalResponse = malloc(strlen(messages) + strlen(key) + 64); 
     if (!finalResponse) return NULL;
 
-sprintf(finalResponse, "*1\r\n*2\r\n$%zu\r\n%s\r\n*%d\r\n%s", 
+    sprintf(finalResponse, "*1\r\n*2\r\n$%zu\r\n%s\r\n*%d\r\n%s", 
             strlen(key), key, msgCount, messages);
     
     return finalResponse;
 }
 
-void handle_stream_print(RespRequest *req, int client_fd, REDIS_CMDS cmd){
+/**Checks if the specified request contains Block
+ * 1 = false
+ * 0 = true
+ */
+int hasBlock(RespRequest *request, int *blockIndex){
+    char *wordInUpper = NULL;
+    for(int i = 0; i < request->argc; i++){
+        wordInUpper = to_upper(request->args[i]);
+        printf("normal word: %s\n", request->args[i]);
+        printf("upper word: %s\n", wordInUpper);
+        if(strstr(wordInUpper, "BLOCK") && i < request->argc - 1){
+            *blockIndex = i;
+            free(wordInUpper);
+            printf("returned 0");
+            return 0;
+        }
+        free(wordInUpper);
+    }
+    printf("false aka 1\n");
+    return 1;
+}
+
+/**Builds appropriate response for xread with multiple streams
+ * 
+ */
+void handle_multiple_xread(RespRequest *req, char *response, int streamIndex, int streamsLength){
+    streamIndex++;
+    char **keyArray = malloc(streamsLength/2 * sizeof(char*)),
+        **idArray = malloc(streamsLength/2 * sizeof(char*));
+    
+    printf("Stream length in multiple: %d\n", streamsLength);
+    for(int i = streamIndex; i < streamsLength + streamIndex; i++){
+        keyArray[i - streamIndex] = malloc(strlen(req->args[i]) + 1);
+        strcpy(keyArray[i - streamIndex], req->args[i]);
+    }
+    for(int i = streamIndex + streamsLength; i < 2 * streamsLength + streamIndex; i++){
+        idArray[i - streamIndex - streamsLength] = malloc(strlen(req->args[i]) + 1);
+        strcpy(idArray[i - streamIndex - streamsLength], req->args[i]);
+        printf("args[%d] = %s\n", i, req->args[i]);
+        printf("idArray[%d] = %s\n", i - streamIndex - streamsLength, idArray[i - streamIndex - streamsLength]);
+    }
+    printf("ENTERED THE GOAT 1 AND only XREAD WITH mul @param\n");
+    response = streamEntry_XREAD_Mul_toString(streamsLength, keyArray, idArray);
+}
+
+/**Handles single xread cmd (with or without block keyword)
+ * False = 1
+ * True = 0
+ */
+int handle_single_xread(RespRequest *req, Client *client, int *count, char *response){
+    Entry *entry = NULL;
+    char *temp_messages = NULL;
+    int blockIndex = 0;
+    
+    printf("INSIDE single xread\n");
+    if(hasBlock(req, &blockIndex) == 0){
+        printf("index 5: %s\n", req->args[3]);
+        printf("index 6: %s\n", req->args[4]);
+        printf("get_current_time_ms() + ms_timeout: %lld\n",get_current_time_ms() + atoi(req->args[blockIndex + 1]));
+        entry = store_getEntry(req->args[3]);
+        if(entry == NULL){
+            printf("Entry wasnt FOUND in block\n");
+            //send(client->fd, "*0\r\n", 4, 0);
+            int ms_timeout = atoi(req->args[blockIndex + 1]);
+            client->is_blocked = 1;
+            client->timeout_at = get_current_time_ms() + ms_timeout;
+            printf("min_id in single: %s\n", client->min_id);
+            client->min_id = strdup(req->args[4]);
+            client->waiting_for_key = strdup(req->args[3]);
+            return 1;
+        }
+        printf("entry is not null\n");
+
+        temp_messages = streamEntry_XREAD_toString(req->args[4], "+", req->args[3], count);
+        if (temp_messages != NULL && *count > 0) {
+            char *resp = wrapXreadResponse(req->args[3], temp_messages, *count);
+            send(client->fd, resp, strlen(resp), 0);
+            free(temp_messages);
+            free(resp);
+            return 0;
+        }
+
+        if(temp_messages) free(temp_messages);
+
+
+        
+        printf("Entered block on single xread");
+        return 1;
+        
+    }
+    else{
+        entry = store_getEntry(req->args[1]);
+        if(entry == NULL){
+            printf("Entry wasnt FOUND\n");
+            send(client->fd, "*0\r\n", 4, 0);
+            return 1;
+        }
+        printf("entry is not null\n");
+
+        temp_messages = streamEntry_XREAD_toString(req->args[2], "+", req->args[1], count);
+        
+
+        if (count == 0 || temp_messages == NULL) {
+            send(client->fd, "*0\r\n", 4, 0);
+            if(temp_messages) free(temp_messages);
+            return 1;
+        }
+    }
+    
+    
+    response = wrapXreadResponse(req->args[1], temp_messages, *count);
+    free(temp_messages);   
+    return 0;
+}
+
+/**Handles Xread cmd (single and multiple)
+ * @return 0 if worked 1 if didnt
+ */
+int handle_xread(RespRequest *req, Client *client, char *response, int *count){
+    int blockIndex = 0;
+    int streamsLength = 0;
+    int streamIndex = 0;
+    int isMul = is_multiple_key(req, &streamsLength, &streamIndex);
+    printf("is even? %d\n", isMul);
+    printf("%d\n", streamsLength > 0 && streamIndex > 0);
+    printf("length: %d, index: %d\n", streamsLength, streamIndex);
+    if(isMul == 0 && streamsLength > 0 && streamIndex >= 0){
+        handle_multiple_xread(req, response, streamIndex, streamsLength);
+        if(hasBlock(req, &blockIndex) == 0 && *count == 0){
+            int ms_timeout = atoi(req->args[blockIndex + 1]);
+            client->is_blocked = 1;
+            client->timeout_at = get_current_time_ms() + ms_timeout;
+            client->min_id = strdup(req->args[2]);
+            printf("min_id: %s\n", client->min_id);
+            client->waiting_for_key = strdup(req->args[1]);
+            
+            printf("Entered block on multiple  xread");
+            if(response) free(response);
+            return 1;
+        
+        }
+    }
+    else{
+        printf("Finished single xread\n");
+        return handle_single_xread(req, client, count, response);
+    }
+}
+
+void handle_stream_print(RespRequest *req, Client *client, REDIS_CMDS cmd){
     printRequest(req);
     int count = 0;
+    int blockIndex = 0;
     printf("Key given: %s\n", req->args[0]);
     char *response = NULL;
+    
     if(cmd == XRANGE){
         response = streamEntry_toString(req->args[1], req->args[2], req->args[0], &count);
     }
     else{
-        int streamsLength = 0;
-        int streamIndex = 0;
-        int isMul = is_multiple_key(req, &streamsLength, &streamIndex);
-        printf("is even? %d\n", isMul);
-        printf("%d\n", streamsLength > 0 && streamIndex > 0);
-        printf("length: %d, index: %d\n", streamsLength, streamIndex);
-        if(isMul == 0 && streamsLength > 0 && streamIndex >= 0){
-            streamIndex++;
-            char **keyArray = malloc(streamsLength/2 * sizeof(char*)),
-             **idArray = malloc(streamsLength/2 * sizeof(char*));
-            
-            printf("Stream length in multiple: %d\n", streamsLength);
-            for(int i = streamIndex; i < streamsLength + streamIndex; i++){
-                keyArray[i - streamIndex] = malloc(strlen(req->args[i]) + 1);
-                strcpy(keyArray[i - streamIndex], req->args[i]);
-            }
-            for(int i = streamIndex + streamsLength; i < 2 * streamsLength + streamIndex; i++){
-                idArray[i - streamIndex - streamsLength] = malloc(strlen(req->args[i]) + 1);
-                strcpy(idArray[i - streamIndex - streamsLength], req->args[i]);
-                printf("args[%d] = %s\n", i, req->args[i]);
-                printf("idArray[%d] = %s\n", i - streamIndex - streamsLength, idArray[i - streamIndex - streamsLength]);
-            }
-            printf("ENTERED THE GOAT 1 AND only XREAD WITH mul @param\n");
-            response = streamEntry_XREAD_Mul_toString(streamsLength, keyArray, idArray);
+        int result = handle_xread(req, client, response, &count);
+        if(result == 1){
+            printf("Return cuz xread is false\n");
+            return;
         }
-        else{
-            Entry *entry = store_getEntry(req->args[1]);
-            if(entry == NULL){
-                printf("Entry wasnt FOUND\n");
-                send(client_fd, "*0\r\n", 4, 0);
-                return;
-            }
-            printf("entry is not null\n");
-
-            char *temp_messages = streamEntry_XREAD_toString(req->args[2], "+", req->args[1], &count);
-
-            if (count == 0 || temp_messages == NULL) {
-                send(client_fd, "*0\r\n", 4, 0);
-                if(temp_messages) free(temp_messages);
-                return;
-            }
-
-            response = wrapXreadResponse(req->args[1], temp_messages, count);
-            free(temp_messages);
-
-
-                    
-        }
-        
-        
+        printf("Didnt return\n");
     }
     
     printf("response: %s\n", response);
-    printf("response length: %lu\n", strlen(response));
     if(response == NULL){
         printf("inside null\n");
         char *emptyArray = "*0\r\n";
-        send(client_fd, "-ERR Internal error\r\n", 21, 0);
-        send(client_fd, emptyArray, strlen(emptyArray), 0);
+        send(client->fd, "-ERR Internal error\r\n", 21, 0);
+        send(client->fd, emptyArray, strlen(emptyArray), 0);
         return;
     }
+    printf("response length: %lu\n", strlen(response));
     printf("outside null\n");
-    int test = send(client_fd, response, strlen(response), 0);
+    int test = send(client->fd, response, strlen(response), 0);
     free(response);
 }
 
-int handle(RespRequest *req, int client_fd) {
+int handle(RespRequest *req, Client *client) {
     if (req == NULL) {
         printf("ERROR IN HANDLE: Request is NULL\n");
-        send(client_fd, "-ERR Internal error\r\n", 21, 0);
+        send(client->fd, "-ERR Internal error\r\n", 21, 0);
         return 1;
     }
 
@@ -408,28 +516,27 @@ int handle(RespRequest *req, int client_fd) {
 
     // Utility cmds
     if (req->command == ECHO) {
-        handle_echo(req, client_fd);
+        handle_echo(req, client->fd);
         return 0;
     }
     if (req->command == PING) {
-        handle_ping(client_fd);
+        handle_ping(client->fd);
         return 0; 
     }
     if (req->command == AUTH || req->command == SELECT || req->command == COMMAND) {
-        // Redis-cli שולח לעיתים פקודות אלו בהתחלה, נחזיר OK כדי לא לתקוע אותו
-        send(client_fd, "+OK\r\n", 5, 0);
+        send(client->fd, "+OK\r\n", 5, 0);
         return 0; 
     }
 
     // Core cmds
     if (req->command == SET) {
         printf("Executing SET\n");
-        handle_set(req, client_fd, TYPE_STRING);
+        handle_set(req, TYPE_STRING, client->fd);
         return 0;
     }
     if (req->command == GET) {
         printf("Executing GET\n");
-        handle_get(req, client_fd);
+        handle_get(req, client->fd);
         return 0; 
     }
     if (req->command == DEL) {
@@ -450,7 +557,7 @@ int handle(RespRequest *req, int client_fd) {
     }
     if (req->command == TYPE) {
         printf("Executing TYPE\n");
-        handle_type(req, client_fd);
+        handle_type(req, client->fd);
         return 0;
     }
 
@@ -463,7 +570,7 @@ int handle(RespRequest *req, int client_fd) {
 
     // List cmds
     if (req->command == LPUSH) { 
-        handle_set(req, client_fd, TYPE_LIST);
+        handle_set(req, TYPE_LIST, client->fd);
         return 0; 
     }
     if (req->command == RPUSH) { return 0; }
@@ -484,17 +591,17 @@ int handle(RespRequest *req, int client_fd) {
 
     // Stream cmds
     if (req->command == XADD){ 
-        handle_set(req, client_fd, TYPE_STREAM);
+        handle_set(req, TYPE_STREAM, client->fd);
         return 0;
     }
     if (req->command == XREAD){ 
         printf("Entered XREAD\n");
-        handle_stream_print(req, client_fd, XREAD);
+        handle_stream_print(req, client, XREAD);
         return 0; 
     }
     if (req->command == XRANGE){
         printf("ENTERED XRANGE\n");
-        handle_stream_print(req, client_fd, XRANGE);
+        handle_stream_print(req, client, XRANGE);
         return 0;
     }
     if (req->command == XGROUP)    { return 0; }
@@ -502,7 +609,7 @@ int handle(RespRequest *req, int client_fd) {
     
     // Default: UNKNOWN
     printf("Unknown command received\n");
-    send(client_fd, "-ERR unknown command\r\n", 22, 0);
+    send(client->fd, "-ERR unknown command\r\n", 22, 0);
     return 1;
 }
 
