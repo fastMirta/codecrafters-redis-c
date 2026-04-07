@@ -105,7 +105,7 @@ void try_deliver_stream_data(Client *client) {
 }
 
 
-int validate_stream_id(RespRequest *req, char **errorMsg){
+int validate_stream_id(RespRequest *req, Stream *stream, char **errorMsg){
     if(strcmp(req->args[1], "*") == 0){
         return 0;
     }
@@ -141,6 +141,14 @@ int validate_stream_id(RespRequest *req, char **errorMsg){
     if(request_id_ms == 0 && request_id_seq == 0){
         *errorMsg = "-ERR The ID specified in XADD must be greater than 0-0\r\n";
         return 1;
+    }
+
+    StreamEntry *testPtr = stream->head;
+    for(int i = 0; i < stream->length; i++){
+        if(strcmp(testPtr->id, req->args[1]) == 0){
+            *errorMsg = "-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n";
+            return 1;
+        }
     }
 
     return 0;
@@ -181,25 +189,26 @@ void generateId(Stream *stream, StreamEntry *streamEntry) {
 
 void handle_set_stream(RespRequest *req, int client_fd){
     char *errorResp = NULL;
-    if(validate_stream_id(req, &errorResp) == 1){
-        send(client_fd, errorResp, strlen(errorResp), 0);
-        return;
-    }
-
+    
     Stream *stream = NULL;
     Entry *entry = store_getEntry(req->args[0]);
 
     if(entry == NULL){
         stream = calloc(1, sizeof(Stream));
         if(stream == NULL){
-            char *err = "-ERR Out of memory\r\n";
-            send(client_fd, err, strlen(err), 0);
+            errorResp = "-ERR Out of memory\r\n";
+            send(client_fd, errorResp, strlen(errorResp), 0);
+            free(errorResp);
             return;
         }
     } else {
         stream = (Stream*) entry->value;
     }
 
+    if(validate_stream_id(req, stream, &errorResp) == 1){
+        send(client_fd, errorResp, strlen(errorResp), 0);
+        return;
+    }
     StreamEntry *streamEntry = malloc(sizeof(StreamEntry));
     streamEntry->id = strdup(req->args[1]);
     streamEntry->next = NULL;
