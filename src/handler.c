@@ -239,7 +239,7 @@ void handle_set_stream(RespRequest *req, int client_fd){
 
     printf("Boyya\n");
     for (int i = 0; i < MAX_CLIENTS; i++) {
-        printf("client is null? %d\n", clients[i] == NULL);
+        //printf("client is null? %d\n", clients[i] == NULL);
         if (clients[i] && clients[i]->is_blocked) {
             printf("DEBUG: Found blocked client on FD %d waiting for %s. XADD key is %s\n", 
                 clients[i]->fd, clients[i]->waiting_for_key, req->args[0]);
@@ -420,9 +420,8 @@ int handle_single_xread(RespRequest *req, Client *client, int *count, char *resp
         if(entry == NULL){
             printf("Entry wasnt FOUND in block\n");
             //send(client->fd, "*0\r\n", 4, 0);
-            int ms_timeout = atoi(req->args[blockIndex + 1]);
             client->is_blocked = 1;
-            client->timeout_at = get_current_time_ms() + ms_timeout;
+            client->timeout_at = get_current_time_ms() + atoi(req->args[blockIndex + 1]);
             printf("min_id in single: %s\n", client->min_id);
             client->min_id = strdup(req->args[4]);
             client->waiting_for_key = strdup(req->args[3]);
@@ -438,6 +437,14 @@ int handle_single_xread(RespRequest *req, Client *client, int *count, char *resp
             free(temp_messages);
             free(resp);
             return 0;
+        }
+        else{
+            client->is_blocked = 1;
+            client->timeout_at = get_current_time_ms() + atoi(req->args[blockIndex + 1]);
+            printf("min_id in single: %s\n", client->min_id);
+            client->min_id = strdup(req->args[4]);
+            client->waiting_for_key = strdup(req->args[3]);
+            return 1;
         }
 
         if(temp_messages) free(temp_messages);
