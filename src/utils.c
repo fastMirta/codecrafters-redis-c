@@ -58,8 +58,8 @@ void store_set(char *key, void *value, TIME_FLAGS flag, int seconds, RedisType t
     if (table[index] == NULL)
         table[index] = malloc(sizeof(Entry));
     else{
-        free(table[index]->key);
-        free(table[index]->value);
+        printf("Its not null\n");
+        //free(table[index]);
     }
     
     table[index]->key = key;
