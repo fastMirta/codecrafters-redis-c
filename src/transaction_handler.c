@@ -23,7 +23,7 @@ void handle_incr(RespRequest *req, int client_fd){
     printf("req value int INCR: %d\n", atoi(req->args[0]) + 1);
     int current_val = atoi((char *)entry->value);
     if(current_val == 0 && strcmp((char*)entry->value, "0") != 0){
-        char *response = "-ERR value is not an integer or out of range";
+        char *response = "-ERR value is not an integer or out of range\r\n";
         send(client_fd, response, strlen(response), 0);
     }
     char *new_val_str = malloc(12); 
