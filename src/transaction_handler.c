@@ -32,7 +32,8 @@ void handle_incr(RespRequest *req, int client_fd){
         return;
     }
 
-    snprintf(new_val_str, 12, "%d", current_val + 1);
+    current_val++;
+    snprintf(new_val_str, 12, "%d", current_val);
     store_set(req->args[0], (void*)new_val_str, NO_TIME_FLAG, -1, TYPE_STRING);
     
     char response[32];
