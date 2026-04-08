@@ -175,6 +175,9 @@ REDIS_CMDS findRedisCmd(char *cmdName) {
     if (strcmp(cmdName, "STRLEN") == 0) return STRLEN;
     if (strcmp(cmdName, "MGET") == 0) return MGET;
 
+    // Transaction cmds
+    if(strcmp(cmdName, "MULTI") == 0) return MULTI;
+
     // List cmds (Added real list commands)
     if (strcmp(cmdName, "LPUSH") == 0) return LPUSH;
     if (strcmp(cmdName, "RPUSH") == 0) return RPUSH;

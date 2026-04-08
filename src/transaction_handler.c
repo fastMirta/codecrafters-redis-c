@@ -5,7 +5,15 @@
 #include <netinet/ip.h>
 #include "transaction_handler.h"
 
-void handle_incr(RespRequest *req, int client_fd){
+
+/**Increments value of given key only if its a number
+ * if key doesnt exist creates one with given param and init as 1
+ */
+void handle_incr(RespRequest *req, int client_fd, int isQueued){
+    if(isQueued){
+        send(client_fd, "+QUEUED\r\n", 9, 0);
+        return;
+    }
     Entry *entry = store_getEntry(req->args[0]);
     if(entry == NULL){
         printf("Entry is null my friendos\n");
@@ -42,4 +50,10 @@ void handle_incr(RespRequest *req, int client_fd){
     
     //free(new_val_str);
     return;
+}
+
+
+void handle_multi(RespRequest *req, Client *client){
+    printf("is queued?: %d\n", client->is_queued);
+    send(client->fd, "+OK\r\n", 5, 0);
 }

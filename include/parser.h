@@ -30,6 +30,12 @@ typedef enum {
     STRLEN,
     MGET,
 
+    // Transaction cmds (המיקום המומלץ)
+    MULTI,
+    EXEC,
+    DISCARD,
+    WATCH,
+
     // List cmds 
     LPUSH,
     RPUSH,

@@ -183,7 +183,11 @@ void generateId(Stream *stream, StreamEntry *streamEntry) {
     streamEntry->id = strdup(idToString);
 }
 
-void handle_set_stream(RespRequest *req, int client_fd){
+void handle_set_stream(RespRequest *req, int client_fd, int isQueued){
+    if(isQueued){
+        send(client_fd, "+QUEUED\r\n", 9, 0);
+        return;
+    }
     char *errorResp = NULL;
     
     Stream *stream = NULL;
@@ -278,13 +282,17 @@ int get_length(char *array[]){
 }
 
 
-void handle_set(RespRequest *req, RedisType type, int client_fd){
+void handle_set(RespRequest *req, RedisType type, int client_fd, int isQueued){
+    if(isQueued){
+        send(client_fd, "+QUEUED\r\n", 9, 0);
+        return;
+    }
     if(req->argc < 2){
         printf("length smaller than 2");
         return;
     }
     if(type == TYPE_STREAM){
-        handle_set_stream(req, client_fd);
+        handle_set_stream(req, client_fd, isQueued);
     }
     else{
         TIME_FLAGS time = NO_TIME_FLAG;
@@ -312,7 +320,11 @@ void handle_get(RespRequest *req, int client_fd) {
     send(client_fd, response, strlen(response), 0);
 }
 
-void handle_type(RespRequest *req, int client_fd){
+void handle_type(RespRequest *req, int client_fd, int isQueued){
+    if(isQueued){
+        send(client_fd, "+QUEUED\r\n", 9, 0);
+        return;
+    }
     char response[1024];
     Entry *entry = store_getEntry(req->args[0]);
     if(entry == NULL){
@@ -621,14 +633,30 @@ void handle_stream_print(RespRequest *req, Client *client, REDIS_CMDS cmd){
 }
 
 int handle(RespRequest *req, Client *client) {
+    printf("handle_multi: client ptr = %p, fd = %d, is_queued = %d\n", 
+       (void*)client, client->fd, client->is_queued);
     if (req == NULL) {
         printf("ERROR IN HANDLE: Request is NULL\n");
         send(client->fd, "-ERR Internal error\r\n", 21, 0);
         return 1;
     }
+    
 
     printf("\n--- Entered Handler: Command ID %d ---\n", req->command);
 
+    // Transaction cmds
+    if(req->command == MULTI){
+        handle_multi(req, client);
+        client->is_queued = 1;
+        return 0;
+    }
+
+    if(client->is_queued){
+        printf("Command is QUEUED for fd %d\n", client->fd);
+        send(client->fd, "+QUEUED\r\n", 9, 0);
+        return 0;
+    }
+    printf("Is queued after multi: %d", client->is_queued);
     // Utility cmds
     if (req->command == ECHO) {
         handle_echo(req, client->fd);
@@ -646,7 +674,7 @@ int handle(RespRequest *req, Client *client) {
     // Core cmds
     if (req->command == SET) {
         printf("Executing SET\n");
-        handle_set(req, TYPE_STRING, client->fd);
+        handle_set(req, TYPE_STRING, client->fd, client->is_queued);
         return 0;
     }
     if (req->command == GET) {
@@ -672,13 +700,13 @@ int handle(RespRequest *req, Client *client) {
     }
     if (req->command == TYPE) {
         printf("Executing TYPE\n");
-        handle_type(req, client->fd);
+        handle_type(req, client->fd, client->is_queued);
         return 0;
     }
 
     // String & Number specific cmds
     if (req->command == INCR){ 
-        handle_incr(req, client->fd);
+        handle_incr(req, client->fd, client->is_queued);
         return 0;
     }
     if (req->command == DECR)   { return 0; }
@@ -688,7 +716,7 @@ int handle(RespRequest *req, Client *client) {
 
     // List cmds
     if (req->command == LPUSH) { 
-        handle_set(req, TYPE_LIST, client->fd);
+        handle_set(req, TYPE_LIST, client->fd, client->is_queued);
         return 0; 
     }
     if (req->command == RPUSH) { return 0; }
@@ -709,7 +737,7 @@ int handle(RespRequest *req, Client *client) {
 
     // Stream cmds
     if (req->command == XADD){ 
-        handle_set(req, TYPE_STREAM, client->fd);
+        handle_set(req, TYPE_STREAM, client->fd, client->is_queued);
         return 0;
     }
     if (req->command == XREAD){ 

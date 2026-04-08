@@ -4,6 +4,9 @@
 #include "handler.h"
 #include "utils.h"
 
-void handle_incr(RespRequest *req, int client_fd);
+struct Client; 
+typedef struct Client Client;
 
+void handle_incr(RespRequest *req, int client_fd, int isQueued);
+void handle_multi(RespRequest *req, Client *client);
 #endif

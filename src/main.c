@@ -131,6 +131,8 @@ int main() {
                         RespRequest request;
 						
                         parse(buffer, &request);
+                        printf("main loop: clients[%d] ptr = %p, fd = %d\n", 
+                        i, (void*)clients[i], clients[i]->fd);
                         handle(&request, clients[i]);
                     }
                 }
