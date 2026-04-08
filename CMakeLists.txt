@@ -9,6 +9,7 @@ set(SOURCE_FILES
     src/parser.c 
     src/handler.c
     src/utils.c
+    src/transaction_handler.c
     
 )
 

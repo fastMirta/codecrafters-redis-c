@@ -72,7 +72,8 @@ void store_set(char *key, void *value, TIME_FLAGS flag, int seconds, RedisType t
         long long now = get_current_time_ms();
         if (flag == EX) {
             table[index]->expires_at = now + ((long long)seconds * 1000);
-        } else if (flag == PX) {
+        } 
+        else if (flag == PX) {
             table[index]->expires_at = now + (long long)seconds;
         }
     }

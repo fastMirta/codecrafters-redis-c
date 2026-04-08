@@ -11,6 +11,7 @@
 #include "utils.h"
 
 
+
 extern Client *clients[MAX_CLIENTS];
 
 int handle_set_flags(RespRequest *req, int *expireAt, TIME_FLAGS *flag){
@@ -676,7 +677,10 @@ int handle(RespRequest *req, Client *client) {
     }
 
     // String & Number specific cmds
-    if (req->command == INCR)   { return 0; }
+    if (req->command == INCR){ 
+        handle_incr(req, client->fd);
+        return 0;
+    }
     if (req->command == DECR)   { return 0; }
     if (req->command == APPEND) { return 0; }
     if (req->command == STRLEN) { return 0; }

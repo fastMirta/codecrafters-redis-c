@@ -3,6 +3,7 @@
 
 #include "parser.h"
 #include "utils.h"
+#include "transaction_handler.h"
 
 #define MAX_CLIENTS 100
 
