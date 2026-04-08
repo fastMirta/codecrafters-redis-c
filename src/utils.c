@@ -274,6 +274,7 @@ char* streamEntry_XREAD_toString(char *idStart, char* idEnd, char *key, int *cou
     }
     printf("finished toString\n");
     printf("entriesToPrint: %s\n", entriesToPrint);
+    printf("test entries: %d\n", strcmp(entriesToPrint, "") == 0);
     
     
     return entriesToPrint;

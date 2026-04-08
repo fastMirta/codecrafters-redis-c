@@ -421,6 +421,7 @@ void handle_multiple_xread(RespRequest *req, char **response, int streamIndex, i
  * True = 0
  */
 int handle_single_xread(RespRequest *req, Client *client, int *count, char **response){
+    //TODO: refactor this code change it to couple functions
     Entry *entry = NULL;
     char *temp_messages = NULL;
     int blockIndex = 0;
@@ -430,32 +431,38 @@ int handle_single_xread(RespRequest *req, Client *client, int *count, char **res
         printf("index 5: %s\n", req->args[3]);
         printf("index 6: %s\n", req->args[4]);
         printf("get_current_time_ms() + ms_timeout: %lld\n",get_current_time_ms() + atoi(req->args[blockIndex + 1]));
+        int ms = atoi(req->args[blockIndex + 1]);
+        if(ms == 0){
+            client->timeout_at = 0;
+        }
+        else{
+            client->timeout_at = get_current_time_ms() + ms;
+        }
+
+        client->is_blocked = 1;
+        client->min_id = strdup(req->args[4]);
+        client->waiting_for_key = strdup(req->args[3]);
+
         entry = store_getEntry(req->args[3]);
         if(entry == NULL){
             printf("Entry wasnt FOUND in block\n");
             //send(client->fd, "*0\r\n", 4, 0);
-            client->is_blocked = 1;
-            client->timeout_at = get_current_time_ms() + atoi(req->args[blockIndex + 1]);
             printf("min_id in single: %s\n", client->min_id);
-            client->min_id = strdup(req->args[4]);
-            client->waiting_for_key = strdup(req->args[3]);
             return 1;
-            //redis-cli XADD streamKey 0-2
         }
+        
         printf("entry is not null\n");
 
         temp_messages = streamEntry_XREAD_toString(req->args[4], "+", req->args[3], count);
-        if (temp_messages != NULL && *count > 0) {
+        printf("Temp MESSAGES: %s\n", temp_messages);
+        if (temp_messages != NULL && strcmp(temp_messages, "") != 0 && *count > 0) {
             *response = wrapXreadResponse(req->args[3], temp_messages, *count);
+            printf("ZERO TO HERO");
             free(temp_messages);
             return 0;
         }
         else{
-            client->is_blocked = 1;
-            client->timeout_at = get_current_time_ms() + atoi(req->args[blockIndex + 1]);
-            printf("min_id in single: %s\n", client->min_id);
-            client->min_id = strdup(req->args[4]);
-            client->waiting_for_key = strdup(req->args[3]);
+            printf("min_id in single and mingle: %s\n", client->min_id);
             return 1;
         }
 
@@ -493,10 +500,37 @@ int handle_single_xread(RespRequest *req, Client *client, int *count, char **res
     return 0;
 }
 
+/**Build client if found a block
+ * @return 1 if failed or 0 if succeed
+ */
+int build_client(Client *client, RespRequest *req, int *blockIndex, int *count, char **response){
+    if(hasBlock(req, blockIndex) == 0 && *count == 0){
+        int ms_timeout = atoi(req->args[*blockIndex + 1]);
+        if(ms_timeout == 0){
+            client->timeout_at = 0;
+        }
+        else{
+            client->timeout_at = get_current_time_ms() + ms_timeout;
+        }
+
+        client->is_blocked = 1;
+        client->min_id = strdup(req->args[2]);
+        client->waiting_for_key = strdup(req->args[1]);
+        
+        printf("min_id: %s\n", client->min_id);
+        printf("Entered block on multiple  xread");
+        if(response) free(response);
+        return 1;
+        
+    }
+    return 0;
+}
+
 /**Handles Xread cmd (single and multiple)
  * @return 0 if worked 1 if didnt
  */
 int handle_xread(RespRequest *req, Client *client, char **response, int *count){
+    //TODO: put the Block search here and give it as a ptr to these funcs (if no block ptr will be null and need to be free)
     int blockIndex = 0;
     int streamsLength = 0;
     int streamIndex = 0;
@@ -509,20 +543,7 @@ int handle_xread(RespRequest *req, Client *client, char **response, int *count){
         if(*response != NULL){
             return 0;
         }
-        if(hasBlock(req, &blockIndex) == 0 && *count == 0){
-            int ms_timeout = atoi(req->args[blockIndex + 1]);
-            client->is_blocked = 1;
-            client->timeout_at = get_current_time_ms() + ms_timeout;
-            client->min_id = strdup(req->args[2]);
-            printf("min_id: %s\n", client->min_id);
-            client->waiting_for_key = strdup(req->args[1]);
-            
-            printf("Entered block on multiple  xread");
-            if(response) free(response);
-            return 1;
-        
-        }
-        return 0;
+        return build_client(client, req, &blockIndex, count, response);
     }
     else{
         printf("Finished single xread\n");

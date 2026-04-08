@@ -77,7 +77,7 @@ int main() {
 
         for (int i = 1; i < active_fds; i++) {
             //printf("Clients timeout: %lld\n", now);
-            if (clients[i] && clients[i]->is_blocked && now >= clients[i]->timeout_at) {
+            if (clients[i] && clients[i]->is_blocked && now >= clients[i]->timeout_at && clients[i]->timeout_at != 0) {
                 send(watch_list[i].fd, "*-1\r\n", 5, 0);
                 clients[i]->is_blocked = 0;
                 printf("Checking client %d: now=%lld, target=%lld\n", 
