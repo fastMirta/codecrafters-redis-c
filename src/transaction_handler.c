@@ -21,14 +21,18 @@ void handle_incr(RespRequest *req, int client_fd){
     printf("req value string: %s\n", req->args[0]);
     printf("req value int: %d\n", atoi(req->args[0]));
     printf("req value int INCR: %d\n", atoi(req->args[0]) + 1);
-    int current_val = atoi((char *)entry->value) + 1;
+    int current_val = atoi((char *)entry->value);
+    if(current_val == 0 && strcmp((char*)entry->value, "0") != 0){
+        char *response = "-ERR value is not an integer or out of range";
+        send(client_fd, response, strlen(response), 0);
+    }
     char *new_val_str = malloc(12); 
     if (new_val_str == NULL) {
         printf("No more memory brotato\n");
         return;
     }
 
-    snprintf(new_val_str, 12, "%d", current_val);
+    snprintf(new_val_str, 12, "%d", current_val + 1);
     store_set(req->args[0], (void*)new_val_str, NO_TIME_FLAG, -1, TYPE_STRING);
     
     char response[32];
