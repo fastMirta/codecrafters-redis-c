@@ -86,18 +86,16 @@ void try_deliver_stream_data(Client *client) {
 
     if (messages != NULL && count > 0) {
         char *response = wrapXreadResponse(client->waiting_for_key, messages, count);
+        free(messages);
         if (response) {
             send(client->fd, response, strlen(response), 0);
-            
-            client->is_blocked = 0;
-            free(client->waiting_for_key);
-            client->waiting_for_key = NULL;
-            free(client->min_id);
-            client->min_id = NULL;
-
             free(response);
         }
-        free(messages);
+        client->is_blocked = 0;
+        free(client->waiting_for_key);
+        client->waiting_for_key = NULL;
+        free(client->min_id);
+        client->min_id = NULL;
         printf("Woke up blocked client on FD %d with %d messages\n", client->fd, count);
     } else {
         if (messages) free(messages);
@@ -384,13 +382,52 @@ int hasBlock(RespRequest *request, int *blockIndex){
         if(strstr(wordInUpper, "BLOCK") && i < request->argc - 1){
             *blockIndex = i;
             free(wordInUpper);
-            printf("returned 0");
+            printf("returned 0\n");
             return 0;
         }
         free(wordInUpper);
     }
     printf("false aka 1\n");
     return 1;
+}
+
+/**Checks for a dollar sign */
+int hasDollarSign(RespRequest *request, int *dollarIndex){
+    for(int i = 0; i < request->argc; i++){
+        printf("normal word: %s\n", request->args[i]);
+        if(strstr(request->args[i], "$")){
+            *dollarIndex = i;
+            printf("returned 0 in dollarrr\n");
+            return 0;
+        }
+    }
+    printf("false aka 1 in dolllarr\n");
+    return 1;
+}
+
+/**Handles response of single XREAD with dollar sign and block 
+ * @return the correct id (if didnt find $ then given id otherwise last id in the stream)
+*/
+char* handle_block_dollar(RespRequest *req, char **temp_messages, int *count){
+    printf("Called dollar\n");
+    int dollarSignIndex = 0;
+    printf("hasDollarSign(req, &dollarSignIndex) == 0: %d\n", hasDollarSign(req, &dollarSignIndex) == 0);
+    if(hasDollarSign(req, &dollarSignIndex) == 0){
+        StreamEntry *streamEntry = lastStreamEntry(req->args[3]);
+        printf("is lastStreamEntry null: %d\n", streamEntry == NULL);
+        if(streamEntry == NULL){
+            *temp_messages = streamEntry_XREAD_toString(req->args[4], "+", req->args[3], count);
+            printf("temp messy bassy yessy: %s\n", *temp_messages);
+            return strdup(req->args[4]);
+        }
+        else{
+            *temp_messages = streamEntry_XREAD_toString(streamEntry->id, "+", req->args[3], count);
+            printf("temp mess: THE ENTRY IS REAL %s\n", *temp_messages);
+            return strdup(streamEntry->id);
+        }
+        
+    }
+    return strdup(req->args[4]);
 }
 
 /**Builds appropriate response for xread with multiple streams
@@ -431,29 +468,12 @@ int handle_single_xread(RespRequest *req, Client *client, int *count, char **res
         printf("index 5: %s\n", req->args[3]);
         printf("index 6: %s\n", req->args[4]);
         printf("get_current_time_ms() + ms_timeout: %lld\n",get_current_time_ms() + atoi(req->args[blockIndex + 1]));
+
         int ms = atoi(req->args[blockIndex + 1]);
-        if(ms == 0){
-            client->timeout_at = 0;
-        }
-        else{
-            client->timeout_at = get_current_time_ms() + ms;
-        }
+        client->timeout_at = (ms == 0) ? 0 : get_current_time_ms() + ms;        
+        client->min_id = handle_block_dollar(req, &temp_messages, count);
 
-        client->is_blocked = 1;
-        client->min_id = strdup(req->args[4]);
-        client->waiting_for_key = strdup(req->args[3]);
 
-        entry = store_getEntry(req->args[3]);
-        if(entry == NULL){
-            printf("Entry wasnt FOUND in block\n");
-            //send(client->fd, "*0\r\n", 4, 0);
-            printf("min_id in single: %s\n", client->min_id);
-            return 1;
-        }
-        
-        printf("entry is not null\n");
-
-        temp_messages = streamEntry_XREAD_toString(req->args[4], "+", req->args[3], count);
         printf("Temp MESSAGES: %s\n", temp_messages);
         if (temp_messages != NULL && strcmp(temp_messages, "") != 0 && *count > 0) {
             *response = wrapXreadResponse(req->args[3], temp_messages, *count);
@@ -463,11 +483,26 @@ int handle_single_xread(RespRequest *req, Client *client, int *count, char **res
         }
         else{
             printf("min_id in single and mingle: %s\n", client->min_id);
+            client->is_blocked = 1;
+            client->waiting_for_key = strdup(req->args[3]);
             return 1;
         }
 
         if(temp_messages) free(temp_messages);
 
+
+
+        // entry = store_getEntry(req->args[3]);
+        // if(entry == NULL){
+        //     printf("Entry wasnt FOUND in block\n");
+        //     //send(client->fd, "*0\r\n", 4, 0);
+        //     printf("min_id in single: %s\n", client->min_id);
+        //     return 1;
+        // }
+        printf("entry is not null\n");
+
+
+        
 
         
         printf("Entered block on single xread");
@@ -487,7 +522,7 @@ int handle_single_xread(RespRequest *req, Client *client, int *count, char **res
         temp_messages = streamEntry_XREAD_toString(req->args[2], "+", req->args[1], count);
         
 
-        if (count == 0 || temp_messages == NULL) {
+        if (*count == 0 || temp_messages == NULL) {
             send(client->fd, "*0\r\n", 4, 0);
             if(temp_messages) free(temp_messages);
             return 1;

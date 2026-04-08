@@ -108,6 +108,24 @@ Entry *store_getEntry(char *key){
     return table[index];
 }
 
+StreamEntry* lastStreamEntry(char *key){
+    Entry *entry = store_getEntry(key);
+    if(entry == NULL){
+        return NULL;
+    }
+    
+    if(entry->type != TYPE_STREAM){
+        return NULL;
+    }
+
+    Stream *stream = (Stream*)entry->value;
+    if(stream == NULL){
+        return NULL;
+    }
+    
+    return stream->tail;
+}
+
 /**Checks if need 
  * isXrange = 0 in xrange, isXrange = 1 in xread
  */

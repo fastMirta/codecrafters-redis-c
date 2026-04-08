@@ -61,5 +61,6 @@ char* streamEntry_XREAD_toString(char *idStart, char* idEnd, char *key, int *cou
 int isBigger(char *srcId, char *checkId);
 char* streamEntry_XREAD_Mul_toString(int len, char *keyArray[], char *idArrays[]);
 void printValue(StreamEntry *entry);
+StreamEntry* lastStreamEntry(char *key);
 
 #endif
