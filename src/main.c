@@ -123,16 +123,26 @@ int main() {
                     } else {
                         buffer[bytes_received] = '\0';
                         char *ptr = buffer;
+                        char *end = buffer + bytes_received;
 
-                        while (*ptr != '\0') {
-                            if (*ptr != '*') { ptr++; continue; }
+                        while (ptr < end) {
+                            // skip to next RESP command start
+                            while (ptr < end && *ptr != '*') ptr++;
+                            if (ptr >= end) break;
 
+                            char *before = ptr;
                             RespRequest request = {0};
-                            int result = parse(&ptr, &request);  
-                            if (result != 0) break;
+                            int result = parse(&ptr, &request);
+
+                            if (result != 0) {
+                                ptr = before + 1;
+                                continue;
+                            }
 
                             printf("main loop: clients[%d] ptr = %p, fd = %d\n",
                                 i, (void*)clients[i], clients[i]->fd);
+                            printf("watch_list[%d].fd=%d  clients[%d]->fd=%d\n",
+                                i, watch_list[i].fd, i, clients[i]->fd);
 
                             handle(&request, clients[i]);
 
