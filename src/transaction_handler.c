@@ -72,7 +72,7 @@ void handle_exec(Client *client){
     send(client->fd, header, headerLen, 0);
 
     if(client->queuedCommands == 0){
-        send(client->fd, "*0\r\n", 3, 0);
+        //send(client->fd, "*0\r\n", 3, 0);
         return;
     }
 
