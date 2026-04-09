@@ -29,6 +29,7 @@ void handle_incr(RespRequest *req, int client_fd, int isQueued){
     if(current_val == 0 && strcmp((char*)entry->value, "0") != 0){
         char *response = "-ERR value is not an integer or out of range\r\n";
         send(client_fd, response, strlen(response), 0);
+        return;
     }
     char *new_val_str = malloc(12); 
     if (new_val_str == NULL) {
