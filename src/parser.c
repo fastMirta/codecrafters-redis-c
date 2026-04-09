@@ -4,37 +4,19 @@
 #include <stdlib.h>
 #include "parser.h"
 #include "utils.h"
-//0 = success| 1 = failure
 
 
 
-//TODO: maybe change type to int and return 0 for work 1/-1 for didnt
 int parse(char *client_input, RespRequest *request){
     printf("ENTERED Parser");
     if(client_input == NULL){
         printf("Error");
         return 1;
     }
-     /**Redis request: 
-        *3\r\n
-        $3\r\n
-        SET\r\n
-        $3\r\n
-        key\r\n
-        $5\r\n
-        value\r\n
-        
-        * = arrays
-        $ = long word
-        + = short word
-        - = error
-        : = number
-        The cmd name is always in the third line    
-     */
+
     char *firstLine = getLine(client_input);
     char *prefix = calloc(1, sizeof(char));
     char *firstLinePtr = firstLine;
-    //*(firstLine + 1);
 
     //Break parser if the first line doesnt start with a prefix or doesnt start with arrays prefix
     if(getPrefix(firstLine, prefix) != 0 || *prefix != '*'){return 1;}
@@ -66,41 +48,18 @@ int parse(char *client_input, RespRequest *request){
             request->command = findRedisCmd(secondLine);
         }
         else{
-            request->args[i-1] = secondLine;
+            request->args[i-1] = strdup(secondLine);
         }
         client_input = client_input + strlen(secondLine) + 2;
     }
     printf("\n");
     printf("argc: %d\n", request->argc);
-    //printf("last args: %s\n", request->args[strlen(request->args)]);
     
     if(*client_input != '\0'){
         printf("Another error\n");
         return 1;
     }
     
-    /**
-     * --SET--
-     * *5\r\n
-        $3\r\n
-        SET\r\n
-        $3\r\n
-        key\r\n
-        $5\r\n
-        value\r\n
-        $2\r\n
-        EX\r\n
-        $2\r\n
-        10\r\n
-     * 
-     * *2\r\n
-     * $4\r\n
-     * ECHO\r\n
-     * $11\r\n
-     * Hello World\r\n
-     * 
-     * 
-     */
     printf("No error\n");
     printf("%d", request->command);
 

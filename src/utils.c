@@ -57,30 +57,31 @@ void store_set(char *key, void *value, TIME_FLAGS flag, int seconds, RedisType t
     int index = hash(key);
     if (table[index] == NULL)
         table[index] = malloc(sizeof(Entry));
-    else{
-        printf("Its not null\n");
-        //free(table[index]);
+    else {
+        free(table[index]->key);
+        if (table[index]->type == TYPE_STRING)
+            free(table[index]->value);
     }
-    
+
     table[index]->key = strdup(key);
-    table[index]->value = strdup(value);
+    
+    if (type == TYPE_STRING)
+        table[index]->value = strdup((char*)value); 
+    else
+        table[index]->value = value;
 
     table[index]->expires_at = 0;
     table[index]->type = type;
 
     if (seconds != -1) {
         long long now = get_current_time_ms();
-        if (flag == EX) {
+        if (flag == EX)
             table[index]->expires_at = now + ((long long)seconds * 1000);
-        } 
-        else if (flag == PX) {
+        else if (flag == PX)
             table[index]->expires_at = now + (long long)seconds;
-        }
     }
-
-    printf("\n");
-    printf("seconds: %lld\n", table[index]->expires_at);
 }
+
 
 char *store_get(char *key) {
     int index = hash(key);
