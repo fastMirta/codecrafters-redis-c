@@ -71,6 +71,11 @@ void handle_exec(Client *client){
     int headerLen = snprintf(header, sizeof(header), "*%d\r\n", client->queuedCommands);
     send(client->fd, header, headerLen, 0);
 
+    if(client->queuedCommands == 0){
+        send(client->fd, "*0\r\n", 3, 0);
+        return;
+    }
+
     client->is_queued = 0;
     printf("queued cmds: %d\n", client->queuedCommands);
     for(int i = 0; i < client->queuedCommands; i++){
