@@ -92,3 +92,19 @@ void handle_exec(Client *client){
     client->queuedCommands = 0;
 }
 
+void handle_discard(RespRequest *req, Client *client){
+    if(client->is_queued == 0){
+        send(client->fd, "-ERR DISCARD without MULTI\r\n", 28, 0);
+        return;
+    }
+
+    for(int i = 0; i < client->queuedCommands; i++){
+        free(client->requests[i]);
+        client->requests[i] = NULL;
+    }
+    client->queuedCommands = 0;
+    client->is_queued = 0;
+
+    send(client->fd, "+OK\r\n", 5, 0);
+    
+}

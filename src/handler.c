@@ -658,7 +658,12 @@ int handle(RespRequest *req, Client *client) {
     }
     if(req->command == EXEC){
         handle_exec(client);
-        printf("Done executing");
+        printf("Done executing\n");
+        return 0;
+    }
+    if(req->command == DISCARD){
+        handle_discard(req, client);
+        printf("Done discarding\n");
         return 0;
     }
 
