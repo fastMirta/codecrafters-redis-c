@@ -55,8 +55,10 @@ void store_set_stream(char *key, Stream *stream){
 
 void store_set(char *key, void *value, TIME_FLAGS flag, int seconds, RedisType type) {
     int index = hash(key);
-    if (table[index] == NULL)
+    if (table[index] == NULL){
+        printf("Key doesnt exist\n");
         table[index] = malloc(sizeof(Entry));
+    }
     else {
         free(table[index]->key);
         if (table[index]->type == TYPE_STRING)
@@ -65,10 +67,14 @@ void store_set(char *key, void *value, TIME_FLAGS flag, int seconds, RedisType t
 
     table[index]->key = strdup(key);
     
-    if (type == TYPE_STRING)
+    if (type == TYPE_STRING){
+        printf("GUYS ITS A STRING\n");
         table[index]->value = strdup((char*)value); 
-    else
+    }
+    else{
+        printf("NOT A STRING\n");
         table[index]->value = value;
+    }
 
     table[index]->expires_at = 0;
     table[index]->type = type;
