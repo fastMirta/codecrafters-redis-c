@@ -62,8 +62,8 @@ void handle_multi(RespRequest *req, Client *client){
 }
 
 
-void handle_exec(Client *client){
-    if(client->is_queued == 0){
+void handle_exec(Client *client) {
+    if (client->is_queued == 0) {
         send(client->fd, "-ERR EXEC without MULTI\r\n", 25, 0);
         return;
     }
@@ -71,26 +71,21 @@ void handle_exec(Client *client){
     char header[32];
     int headerLen = snprintf(header, sizeof(header), "*%d\r\n", client->queuedCommands);
     send(client->fd, header, headerLen, 0);
-    client->is_queued = 0;
 
-    if(client->queuedCommands == 0){
-        return;
-    }
+    int cmdCount = client->queuedCommands;
+    client->queuedCommands = 0;
 
-    
-    printf("queued cmds: %d\n", client->queuedCommands);
-    for(int i = 0; i < client->queuedCommands; i++){
-        printf("Entered loop in exec\n");
+    for (int i = 0; i < cmdCount; i++) {
         printRequest(client->requests[i]);
+        client->is_queued = 0;
         handle(client->requests[i], client);
-
-        for(int j=0; j < client->requests[i]->argc; j++) free(client->requests[i]->args[j]);
-
+        client->is_queued = 0;
+        for (int j = 0; j < client->requests[i]->argc; j++)
+            free(client->requests[i]->args[j]);
         free(client->requests[i]);
         client->requests[i] = NULL;
     }
-    
-    client->queuedCommands = 0;
+    client->is_queued = 0;
 }
 
 void handle_discard(RespRequest *req, Client *client){

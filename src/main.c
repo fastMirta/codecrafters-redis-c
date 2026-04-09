@@ -124,6 +124,8 @@ int main() {
                         // Sync arrays
                         watch_list[i] = watch_list[active_fds - 1];
                         clients[i] = clients[active_fds - 1];
+                        clients[active_fds - 1] = NULL;
+                        watch_list[active_fds - 1].fd = -1; 
                         active_fds--;
                         i--; 
                     } else {

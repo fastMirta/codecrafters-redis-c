@@ -31,13 +31,16 @@ RespRequest* copy_request(RespRequest *src) {
 
 int handle_set_flags(RespRequest *req, int *expireAt, TIME_FLAGS *flag){
     printf("\n");
-    printf("ENTERED FLAGS HANDLER\n");
+    printf("ENTERED FLAGS HANDLER\n");  
+
+    *expireAt = -1;
+    *flag = NO_TIME_FLAG;
     
-    if(req->argc <= 1){
+    if(req->argc <= 3){
         printf("Doesnt have flags");
-        return 1;
+        return 0;
     }
-    for(int i = 1; i < req->argc - 1; i++){
+    for(int i = 2; i < req->argc - 1; i++){
         printf("%s\n", req->args[i]);
         if(strcmp(req->args[i], "EX") == 0){
             *expireAt = atoi(req->args[i + 1]);
@@ -59,7 +62,6 @@ int handle_set_flags(RespRequest *req, int *expireAt, TIME_FLAGS *flag){
 
     
 }
-
 
 
 void handle_ping(int client_fd){
@@ -378,7 +380,7 @@ int is_multiple_key(RespRequest *req, int *streamsLength, int *streamIndex){
         index++;
     }
     printf("num: %d\n", req->argc - index - 1);
-    if((req->argc - index - 1) % 2 == 0 && (req->argc - index - 1) > 2){
+    if((req->argc - index - 1) % 2 == 0 && (req->argc - index - 1) >= 4){
         *streamIndex = index;
         *streamsLength = (req->argc - index - 1)/2;
         return 0;

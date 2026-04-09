@@ -97,8 +97,12 @@ char *store_get(char *key) {
     if (table[index]->expires_at != 0) {
         long long now = get_current_time_ms();
         if (now >= table[index]->expires_at) {
-            table[index] = NULL; 
-            return NULL; 
+            free(table[index]->key);
+            if (table[index]->type == TYPE_STRING)
+                free(table[index]->value);
+            free(table[index]);     
+            table[index] = NULL;
+            return NULL;
         }
     }
     return table[index]->value;
@@ -172,9 +176,6 @@ int isBigger(char *srcId, char *checkId){
 
 
 char* streamEntry_toString(char *idStart, char* idEnd, char *key, int *count){
-    char* entriesToPrint = malloc(1024);;
-    int offset = 0;
-
     Entry *entry = store_getEntry(key);
     if(entry == NULL){
         printf("Entry wasnt FOUND\n");
@@ -182,60 +183,66 @@ char* streamEntry_toString(char *idStart, char* idEnd, char *key, int *count){
     }
     if(entry->type != TYPE_STREAM){
         printf("Type is NOT stream: %d\n", entry->type);
-        printf("Key: %s\n", entry->key);
         return NULL;
     }
-    
-    
+
     Stream *stream = (Stream*)entry->value;
     StreamEntry *newPtr = stream->head;
 
     long long firstMS, firstSeq, endMs, endSeq, currentMs, currentSeq;
-    if(strcmp(idStart, "-") == 0 && strcmp(idEnd, "+") != 0){
+
+    if(strcmp(idStart, "-") == 0 && strcmp(idEnd, "+") == 0){
+        sscanf(newPtr->id, "%lld-%lld", &firstMS, &firstSeq);
+        sscanf(stream->tail->id, "%lld-%lld", &endMs, &endSeq);
+    }
+    else if(strcmp(idStart, "-") == 0){
         sscanf(newPtr->id, "%lld-%lld", &firstMS, &firstSeq);
         sscanf(idEnd, "%lld-%lld", &endMs, &endSeq);
-        printf("Entered - only\n");
-        printf("start ms: %lld, start seq: %lld, end ms: %lld, end seq: %lld\n", firstMS, firstSeq, endMs, endSeq);
     }
-    else if(strcmp(idStart, "-") != 0 && strcmp(idEnd, "+") == 0){
+    else if(strcmp(idEnd, "+") == 0){
         sscanf(idStart, "%lld-%lld", &firstMS, &firstSeq);
-        printf("Tail is null? %d\n", stream->tail == NULL);
         sscanf(stream->tail->id, "%lld-%lld", &endMs, &endSeq);
-        printf("Entered + only\n");
-        printf("start ms: %lld, start seq: %lld, end ms: %lld, end seq: %lld\n", firstMS, firstSeq, endMs, endSeq);
     }
-    else if(strcmp(idStart, "-") != 0 && strcmp(idEnd, "+") != 0) {
+    else{
         sscanf(idStart, "%lld-%lld", &firstMS, &firstSeq);
         sscanf(idEnd, "%lld-%lld", &endMs, &endSeq);
-        printf("Entered none only\n");
-        printf("start ms: %lld, start seq: %lld, end ms: %lld, end seq: %lld\n", firstMS, firstSeq, endMs, endSeq);
     }
-    printValue(stream->head);
 
-    
+    int bufSize = 64 + (int)stream->length * 256;
+    char *entriesToPrint = malloc(bufSize);
+    if(entriesToPrint == NULL) return NULL;
+    int offset = 0;
+
     printf("stream length: %zu\n", stream->length);
-    for(int i = 0; i < stream->length; i++){
+    for(int i = 0; i < (int)stream->length; i++){
         printValue(newPtr);
         sscanf(newPtr->id, "%lld-%lld", &currentMs, &currentSeq);
-        
+
         if(add_to_string(firstMS, firstSeq, endMs, endSeq, currentMs, currentSeq, 0) == 0){
-            offset += snprintf(entriesToPrint + offset,
-                 1024 - offset, "*2\r\n$%zu\r\n%s\r\n*%d\r\n", strlen(newPtr->id), newPtr->id, newPtr->field_count);
+            offset += snprintf(entriesToPrint + offset, bufSize - offset,
+                "*2\r\n$%zu\r\n%s\r\n*%d\r\n",
+                strlen(newPtr->id), newPtr->id, newPtr->field_count);
             (*count)++;
             for(int j = 0; j < newPtr->field_count; j++){
-                offset += snprintf(entriesToPrint + offset, 1024 - offset,
-                 "$%zu\r\n%s\r\n", strlen(newPtr->fields[j]), newPtr->fields[j]);
+                offset += snprintf(entriesToPrint + offset, bufSize - offset,
+                    "$%zu\r\n%s\r\n",
+                    strlen(newPtr->fields[j]), newPtr->fields[j]);
             }
         }
         newPtr = newPtr->next;
     }
+
     printf("finished toString\n");
     printf("entriesToPrint: %s\n", entriesToPrint);
-    char *result = malloc(1024 + 32);
-    int finalLen = snprintf(result, 1024 + 32, "*%d\r\n%s", *count, entriesToPrint);
+
+    char *result = malloc(bufSize + 32);
+    if(result == NULL){
+        free(entriesToPrint);
+        return NULL;
+    }
+    snprintf(result, bufSize + 32, "*%d\r\n%s", *count, entriesToPrint);
     free(entriesToPrint);
-    free(newPtr);
-    
+
     return result;
 }
 
