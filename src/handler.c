@@ -639,6 +639,8 @@ void handle_stream_print(RespRequest *req, Client *client, REDIS_CMDS cmd){
 }
 
 int handle(RespRequest *req, Client *client) {
+    printf("HANDLE CALLED: cmd=%d argc=%d\n", req->command, req->argc);
+    fflush(stdout);
     if (req == NULL) {
         printf("ERROR IN HANDLE: Request is NULL\n");
         send(client->fd, "-ERR Internal error\r\n", 21, 0);

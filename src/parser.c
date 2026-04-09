@@ -8,66 +8,58 @@
 
 
 int parse(char *client_input, RespRequest *request){
-    printf("ENTERED Parser");
-    if(client_input == NULL){
-        printf("Error");
-        return 1;
-    }
+    if(client_input == NULL) return 1;
 
-    char *firstLine = getLine(client_input);
     char *prefix = calloc(1, sizeof(char));
-    char *firstLinePtr = firstLine;
-
-    //Break parser if the first line doesnt start with a prefix or doesnt start with arrays prefix
-    if(getPrefix(firstLine, prefix) != 0 || *prefix != '*'){return 1;}
-
-    int loopLen = atoi(firstLinePtr + 1);
-    request->argc = loopLen - 1;
-
-    //jumping to the next line
-    client_input = client_input + strlen(firstLine) + 2;
-    for(int i = 0; i < loopLen; i++){
-        printf("\n");
-        printf("Index: %d", i);
-        firstLine = getLine(client_input);
-        if(getPrefix(firstLine, prefix) != 0){return 1;}
-
-        client_input = client_input + strlen(firstLine) + 2;
-        char *secondLine = getLine(client_input);
-        printf("Second line: %s", secondLine);
-        printf("\n");
-        int nextLineLen = atoi(firstLine + 1);
-        if(strlen(secondLine) != nextLineLen){return 1;}
-        
-        //Finds the cmd
-        if(i == 0){
-            
-            char *secondLinewith2 = malloc(strlen(secondLine));
-            strncpy(secondLinewith2, secondLine, strlen(secondLine));
-            printf("second linessss: %s", secondLinewith2);
-            request->command = findRedisCmd(secondLine);
-        }
-        else{
-            request->args[i-1] = strdup(secondLine);
-        }
-        client_input = client_input + strlen(secondLine) + 2;
-    }
-    printf("\n");
-    printf("argc: %d\n", request->argc);
+    char *firstLine = getLine(client_input);
     
-    if(*client_input != '\0'){
-        printf("Another error\n");
+    if(getPrefix(firstLine, prefix) != 0 || *prefix != '*'){
+        free(firstLine);  // <-- free before returning
+        free(prefix);
         return 1;
     }
-    
-    printf("No error\n");
-    printf("%d", request->command);
 
-    free(firstLinePtr);
+    int loopLen = atoi(firstLine + 1);
+    request->argc = loopLen - 1;
+    client_input = client_input + strlen(firstLine) + 2;
+    free(firstLine);  // free the first line here, before the loop reassigns it
+
+    for(int i = 0; i < loopLen; i++){
+        char *lenLine = getLine(client_input);
+        if(getPrefix(lenLine, prefix) != 0){
+            free(lenLine);
+            free(prefix);
+            return 1;
+        }
+        client_input = client_input + strlen(lenLine) + 2;
+        
+        char *valueLine = getLine(client_input);
+        int expectedLen = atoi(lenLine + 1);
+        free(lenLine);
+
+        if((int)strlen(valueLine) != expectedLen){
+            free(valueLine);
+            free(prefix);
+            return 1;
+        }
+
+        if(i == 0){
+            request->command = findRedisCmd(valueLine);
+            free(valueLine);  
+        } else {
+            request->args[i-1] = strdup(valueLine);
+            free(valueLine);
+        }
+        client_input = client_input + expectedLen + 2;
+    }
+
+    free(prefix);
+    
+    // skip any trailing whitespace
+    while(*client_input == '\r' || *client_input == '\n') client_input++;
+    
     return 0;
-    
 }
-
 //Copies the line until reaches the end of the word or the end of the line (symbolized by \r\n)
 char* getLine(char *client_input){
     char *line = malloc(256);  
