@@ -6,6 +6,7 @@
 #include "transaction_handler.h"
 
 #define MAX_CLIENTS 100
+#define MAX_QUEUED_CMDS 100
 
 typedef struct Client {
     int fd;
@@ -14,6 +15,8 @@ typedef struct Client {
     long long timeout_at;
     char *waiting_for_key;
     char *min_id;
+    RespRequest *requests[MAX_QUEUED_CMDS];
+    int queuedCommands;
 } Client;
 
 extern Client *clients[MAX_CLIENTS];
@@ -28,5 +31,6 @@ void handle_get(RespRequest *req, int client_fd);
 void handle_type(RespRequest *req, int client_fd, int isQueued);
 void handle_unknown(RespRequest *req, int client_fd);
 int handle(RespRequest *req, Client *client);
+void printRequest(RespRequest *req);
 
 #endif

@@ -44,8 +44,8 @@ void store_set_stream(char *key, Stream *stream){
         free(table[index]->key);
         free(table[index]->value);
     }
-    table[index]->key = key;
-    table[index]->value = stream; 
+    table[index]->key = strdup(key);
+    table[index]->value = stream;
     table[index]->expires_at = 0;
     table[index]->type = TYPE_STREAM;
     printf("\n");
@@ -62,8 +62,8 @@ void store_set(char *key, void *value, TIME_FLAGS flag, int seconds, RedisType t
         //free(table[index]);
     }
     
-    table[index]->key = key;
-    table[index]->value = value; 
+    table[index]->key = strdup(key);
+    table[index]->value = strdup(value);
 
     table[index]->expires_at = 0;
     table[index]->type = type;
@@ -337,6 +337,7 @@ char* streamEntry_XREAD_Mul_toString(int len, char *keyArray[], char *idArrays[]
     free(counts);
     return result; 
 }
+
 
 
 

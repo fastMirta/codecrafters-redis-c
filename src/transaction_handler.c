@@ -10,10 +10,6 @@
  * if key doesnt exist creates one with given param and init as 1
  */
 void handle_incr(RespRequest *req, int client_fd, int isQueued){
-    if(isQueued){
-        send(client_fd, "+QUEUED\r\n", 9, 0);
-        return;
-    }
     Entry *entry = store_getEntry(req->args[0]);
     if(entry == NULL){
         printf("Entry is null my friendos\n");
@@ -54,6 +50,40 @@ void handle_incr(RespRequest *req, int client_fd, int isQueued){
 
 
 void handle_multi(RespRequest *req, Client *client){
+    if(client->is_queued){
+        send(client->fd, "-ERR MULTI calls can not be nested\r\n", 36, 0);
+        return;
+    }
+    client->queuedCommands = 0;
+    client->is_queued = 1;
     printf("is queued?: %d\n", client->is_queued);
     send(client->fd, "+OK\r\n", 5, 0);
 }
+
+
+void handle_exec(Client *client){
+    if(client->is_queued == 0){
+        send(client->fd, "-ERR EXEC without MULTI\r\n", 25, 0);
+        return;
+    }
+
+    char header[32];
+    int headerLen = snprintf(header, sizeof(header), "*%d\r\n", client->queuedCommands);
+    send(client->fd, header, headerLen, 0);
+
+    client->is_queued = 0;
+    printf("queued cmds: %d\n", client->queuedCommands);
+    for(int i = 0; i < client->queuedCommands; i++){
+        printf("Entered loop in exec\n");
+        printRequest(client->requests[i]);
+        handle(client->requests[i], client);
+
+        for(int j=0; j < client->requests[i]->argc; j++) free(client->requests[i]->args[j]);
+
+        free(client->requests[i]);
+        client->requests[i] = NULL;
+    }
+    
+    client->queuedCommands = 0;
+}
+

@@ -14,6 +14,21 @@
 
 extern Client *clients[MAX_CLIENTS];
 
+/**Copy src request to the dest request
+ * @return ptr to dest request
+ */
+RespRequest* copy_request(RespRequest *src) {
+    RespRequest *dest = malloc(sizeof(RespRequest));
+    if (!dest) return NULL;
+
+    dest->command = src->command;
+    dest->argc = src->argc;
+    for (int i = 0; i < src->argc; i++) {
+        dest->args[i] = strdup(src->args[i]); 
+    }
+    return dest;
+}
+
 int handle_set_flags(RespRequest *req, int *expireAt, TIME_FLAGS *flag){
     printf("\n");
     printf("ENTERED FLAGS HANDLER\n");
@@ -184,10 +199,6 @@ void generateId(Stream *stream, StreamEntry *streamEntry) {
 }
 
 void handle_set_stream(RespRequest *req, int client_fd, int isQueued){
-    if(isQueued){
-        send(client_fd, "+QUEUED\r\n", 9, 0);
-        return;
-    }
     char *errorResp = NULL;
     
     Stream *stream = NULL;
@@ -283,10 +294,6 @@ int get_length(char *array[]){
 
 
 void handle_set(RespRequest *req, RedisType type, int client_fd, int isQueued){
-    if(isQueued){
-        send(client_fd, "+QUEUED\r\n", 9, 0);
-        return;
-    }
     if(req->argc < 2){
         printf("length smaller than 2");
         return;
@@ -321,10 +328,6 @@ void handle_get(RespRequest *req, int client_fd) {
 }
 
 void handle_type(RespRequest *req, int client_fd, int isQueued){
-    if(isQueued){
-        send(client_fd, "+QUEUED\r\n", 9, 0);
-        return;
-    }
     char response[1024];
     Entry *entry = store_getEntry(req->args[0]);
     if(entry == NULL){
@@ -342,12 +345,14 @@ void handle_type(RespRequest *req, int client_fd, int isQueued){
     }
 }
 
+/**/
 void handle_unknown(RespRequest *req, int client_fd){
-
+    //TODO: create logic for unknown cmd
 }
 
 void printRequest(RespRequest *req){
     printf("PRINTING REQUESTTT\n");
+     printf("command: %d\n", req->command);
     printf("argc: %d\n", req->argc);
     for(int i = 0; i < req->argc; i++){
         printf("Args: %s\n", req->args[i]);
@@ -365,6 +370,7 @@ char* to_upper(char *stringToUpper){
     return newString;
 }
 
+/**Checks if XREAD command contains multiple streams */
 int is_multiple_key(RespRequest *req, int *streamsLength, int *streamIndex){
     int index = 0;
     char **contents = NULL;
@@ -633,29 +639,39 @@ void handle_stream_print(RespRequest *req, Client *client, REDIS_CMDS cmd){
 }
 
 int handle(RespRequest *req, Client *client) {
-    printf("handle_multi: client ptr = %p, fd = %d, is_queued = %d\n", 
-       (void*)client, client->fd, client->is_queued);
     if (req == NULL) {
         printf("ERROR IN HANDLE: Request is NULL\n");
         send(client->fd, "-ERR Internal error\r\n", 21, 0);
         return 1;
     }
-    
+    printf("Entered Handle on this request: \n");
+    printRequest(req);
+
 
     printf("\n--- Entered Handler: Command ID %d ---\n", req->command);
 
     // Transaction cmds
     if(req->command == MULTI){
         handle_multi(req, client);
-        client->is_queued = 1;
+        //client->is_queued = 1;
+        return 0;
+    }
+    if(req->command == EXEC){
+        handle_exec(client);
+        printf("Done executing");
         return 0;
     }
 
     if(client->is_queued){
+        client->requests[client->queuedCommands] = copy_request(req);
+        client->queuedCommands++;
+        
         printf("Command is QUEUED for fd %d\n", client->fd);
         send(client->fd, "+QUEUED\r\n", 9, 0);
         return 0;
     }
+
+
     printf("Is queued after multi: %d", client->is_queued);
     // Utility cmds
     if (req->command == ECHO) {

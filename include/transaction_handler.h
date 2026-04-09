@@ -9,4 +9,5 @@ typedef struct Client Client;
 
 void handle_incr(RespRequest *req, int client_fd, int isQueued);
 void handle_multi(RespRequest *req, Client *client);
+void handle_exec(Client *client);
 #endif
