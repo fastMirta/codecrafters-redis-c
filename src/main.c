@@ -125,33 +125,19 @@ int main() {
                         char *ptr = buffer;
 
                         while (*ptr != '\0') {
-                            if (*ptr != '*') {
-                                ptr++;
-                                continue;
-                            }
+                            if (*ptr != '*') { ptr++; continue; }
 
                             RespRequest request = {0};
-                            int result = parse(ptr, &request);
+                            int result = parse(&ptr, &request);  
                             if (result != 0) break;
 
                             printf("main loop: clients[%d] ptr = %p, fd = %d\n",
                                 i, (void*)clients[i], clients[i]->fd);
-                            printf("watch_list[%d].fd=%d  clients[%d]->fd=%d\n",
-                                i, watch_list[i].fd, i, clients[i]->fd);
 
                             handle(&request, clients[i]);
 
                             for (int a = 0; a < request.argc; a++)
                                 free(request.args[a]);
-
-                            while (*ptr != '\0' && *ptr != '\r') ptr++;
-                            if (*ptr == '\r') ptr += 2;
-
-                            int pairs = request.argc + 1;
-                            for (int p = 0; p < pairs * 2 && *ptr != '\0'; p++) {
-                                while (*ptr != '\0' && *ptr != '\r') ptr++;
-                                if (*ptr == '\r') ptr += 2;
-                            }
                         }
                     }
                 }

@@ -7,33 +7,34 @@
 
 
 
-int parse(char *client_input, RespRequest *request){
-    if(client_input == NULL) return 1;
+// parser.c
+int parse(char **client_input, RespRequest *request){
+    if(*client_input == NULL) return 1;
 
     char *prefix = calloc(1, sizeof(char));
-    char *firstLine = getLine(client_input);
-    
+    char *firstLine = getLine(*client_input);
+
     if(getPrefix(firstLine, prefix) != 0 || *prefix != '*'){
-        free(firstLine);  // <-- free before returning
+        free(firstLine);
         free(prefix);
         return 1;
     }
 
     int loopLen = atoi(firstLine + 1);
     request->argc = loopLen - 1;
-    client_input = client_input + strlen(firstLine) + 2;
-    free(firstLine);  // free the first line here, before the loop reassigns it
+    *client_input = *client_input + strlen(firstLine) + 2;
+    free(firstLine);
 
     for(int i = 0; i < loopLen; i++){
-        char *lenLine = getLine(client_input);
+        char *lenLine = getLine(*client_input);
         if(getPrefix(lenLine, prefix) != 0){
             free(lenLine);
             free(prefix);
             return 1;
         }
-        client_input = client_input + strlen(lenLine) + 2;
-        
-        char *valueLine = getLine(client_input);
+        *client_input = *client_input + strlen(lenLine) + 2;
+
+        char *valueLine = getLine(*client_input);
         int expectedLen = atoi(lenLine + 1);
         free(lenLine);
 
@@ -45,21 +46,18 @@ int parse(char *client_input, RespRequest *request){
 
         if(i == 0){
             request->command = findRedisCmd(valueLine);
-            free(valueLine);  
+            free(valueLine);
         } else {
             request->args[i-1] = strdup(valueLine);
             free(valueLine);
         }
-        client_input = client_input + expectedLen + 2;
+        *client_input = *client_input + expectedLen + 2;
     }
 
     free(prefix);
-    
-    // skip any trailing whitespace
-    while(*client_input == '\r' || *client_input == '\n') client_input++;
-    
     return 0;
 }
+
 //Copies the line until reaches the end of the word or the end of the line (symbolized by \r\n)
 char* getLine(char *client_input){
     char *line = malloc(256);  
