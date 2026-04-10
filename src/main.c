@@ -38,10 +38,9 @@ int findPortIndex(int argc, char *argv[], int *portIndex){
     return 1;
 }
 
-void replicaofHandler(int argc, char *argv[]){
-    server_config.role = "master";
-    
+void replicaofHandler(int argc, char *argv[]){    
     if(argc < 3){
+        server_config.role = "master";
         return;
     }
 
