@@ -27,7 +27,18 @@ long long get_current_time_ms() {
     return (long long)(ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
 }
 
-int main() {
+int findPortIndex(int argc, char *argv[], int *portIndex){
+    for(int i = 0; i < argc; i++){
+        printf("argv[%d] = %s\n", i, argv[i]);
+        if(strcmp(argv[i], "--port") == 0 && i + 1 < argc){
+            *portIndex = i + 1;
+            return 0;
+        }
+    }
+    return 1;
+}
+
+int main(int argc, char *argv[]) {
     setbuf(stdout, NULL);
     setbuf(stderr, NULL);
 
@@ -48,9 +59,19 @@ int main() {
     int reuse = 1;
     setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 
+    int portIndex = -1;
+    int port = 6379;
+    if(findPortIndex(argc, argv, &portIndex) == 0){
+        printf("WORKED!!!\n");
+        printf("DEBUG: port index: argv[%d] = %s\n", portIndex, argv[portIndex]);
+        port = atoi(argv[portIndex]);
+    }
+    else{
+        printf("DEUBG: didnt not find port\n");
+    }
     struct sockaddr_in serv_addr = {
         .sin_family = AF_INET,
-        .sin_port = htons(6379),
+        .sin_port = htons(port),
         .sin_addr = {htonl(INADDR_ANY)},
     };
 
