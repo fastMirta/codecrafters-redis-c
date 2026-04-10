@@ -3,8 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
@@ -15,7 +13,9 @@
 #include "handler.h"
 
 const char *response = "+PONG\r\n";
+RedisConfig server_config;
 Client *clients[MAX_CLIENTS];
+
 
 void printWord(char word[]){
     printf("%s", word);
@@ -85,6 +85,11 @@ int main(int argc, char *argv[]) {
         perror("Bind failed");
         return 1;
     }
+
+    server_config.port = port;
+    server_config.role = "master"; 
+    server_config.master_replid = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb";
+    server_config.master_repl_offset = 0;
 
     listen(server_fd, 5);
 
@@ -163,7 +168,7 @@ int main(int argc, char *argv[]) {
                 watch_list[active_fds - 1].revents = 0;
 
                 active_fds--;
-                i--; // re-check this index since we swapped a new client in
+                i--;
             } else {
                 buffer[bytes_received] = '\0';
                 char *ptr = buffer;
@@ -176,6 +181,7 @@ int main(int argc, char *argv[]) {
 
                     char *before = ptr;
                     RespRequest request = {0};
+                    server_config.master_repl_offset++;
                     int result = parse(&ptr, &request);
 
                     if (result != 0) {

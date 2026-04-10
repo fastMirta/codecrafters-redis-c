@@ -10,6 +10,7 @@ set(SOURCE_FILES
     src/handler.c
     src/utils.c
     src/transaction_handler.c
+    src/utility_handler.c
     
 )
 

@@ -1,6 +1,8 @@
 #ifndef HANDLER_H
 #define HANDLER_H
 
+#include <netinet/in.h>
+#include <netinet/ip.h>
 #include "parser.h"
 #include "utils.h"
 #include "transaction_handler.h"
@@ -19,7 +21,17 @@ typedef struct Client {
     int queuedCommands;
 } Client;
 
+typedef struct {
+    int port;
+    char *role; 
+    char *master_replid; 
+    int master_repl_offset;
+} RedisConfig;
+
+extern RedisConfig server_config;
 extern Client *clients[MAX_CLIENTS];
+
+
 
 int handle_set_flags(RespRequest *req, int *expireAt, TIME_FLAGS *flag);
 void handle_ping(int client_fd);

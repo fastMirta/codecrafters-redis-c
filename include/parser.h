@@ -10,6 +10,7 @@ typedef enum {
     // Utility cmds
     ECHO,
     PING,
+    INFO,
     AUTH,
     SELECT,
     COMMAND,

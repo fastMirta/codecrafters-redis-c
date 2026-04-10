@@ -104,6 +104,7 @@ REDIS_CMDS findRedisCmd(char *cmdName) {
     // Utility cmds
     if (strcmp(cmdName, "ECHO") == 0) return ECHO;
     if (strcmp(cmdName, "PING") == 0) return PING;
+    if (strcmp(cmdName, "INFO") == 0) return INFO;
     if (strcmp(cmdName, "AUTH") == 0) return AUTH;
     if (strcmp(cmdName, "SELECT") == 0) return SELECT;
     if (strcmp(cmdName, "COMMAND") == 0) return COMMAND;

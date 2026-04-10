@@ -2,8 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
 #include <time.h>
 #include <errno.h>
 #include "handler.h"
@@ -689,6 +687,10 @@ int handle(RespRequest *req, Client *client) {
     }
     if (req->command == PING) {
         handle_ping(client->fd);
+        return 0; 
+    }
+    if (req->command == INFO) {
+        handle_info(req, client->fd);
         return 0; 
     }
     if (req->command == AUTH || req->command == SELECT || req->command == COMMAND) {
