@@ -39,9 +39,12 @@ int findPortIndex(int argc, char *argv[], int *portIndex){
 }
 
 void replicaofHandler(int argc, char *argv[]){
+    server_config.role = "master";
+    
     if(argc < 3){
         return;
     }
+
     printf("argv[1] = %s\n", argv[1]);
     printf("argc: %d\n", argc);
     printf("argv[5] = %s\n", argv[5]);
