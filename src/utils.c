@@ -55,58 +55,63 @@ void store_set_stream(char *key, Stream *stream){
 
 void store_set(char *key, void *value, TIME_FLAGS flag, int seconds, RedisType type) {
     int index = hash(key);
-    if (table[index] == NULL){
-        printf("Key doesnt exist\n");
-        table[index] = malloc(sizeof(Entry));
-    }
-    else {
-        free(table[index]->key);
-        if (table[index]->type == TYPE_STRING)
-            free(table[index]->value);
-    }
-
-    table[index]->key = strdup(key);
     
-    if (type == TYPE_STRING){
-        printf("GUYS ITS A STRING\n");
-        table[index]->value = strdup((char*)value); 
+    Entry *existing = table[index];
+    while (existing != NULL) {
+        if (strcmp(existing->key, key) == 0) break;
+        existing = existing->next;
     }
-    else{
-        printf("NOT A STRING\n");
-        table[index]->value = value;
+    
+    if (existing == NULL) {
+        Entry *newEntry = malloc(sizeof(Entry));
+        newEntry->key = strdup(key);
+        newEntry->next = table[index]; 
+        table[index] = newEntry;
+        existing = newEntry;
+    } else {
+        free(existing->key);
+        existing->key = strdup(key);
+        if (existing->type == TYPE_STRING && existing->value)
+            free(existing->value);
     }
 
-    table[index]->expires_at = 0;
-    table[index]->type = type;
+    if (type == TYPE_STRING)
+        existing->value = strdup((char*)value);
+    else
+        existing->value = value;
+
+    existing->expires_at = 0;
+    existing->type = type;
 
     if (seconds != -1) {
         long long now = get_current_time_ms();
         if (flag == EX)
-            table[index]->expires_at = now + ((long long)seconds * 1000);
+            existing->expires_at = now + ((long long)seconds * 1000);
         else if (flag == PX)
-            table[index]->expires_at = now + (long long)seconds;
+            existing->expires_at = now + (long long)seconds;
     }
 }
 
 
 char *store_get(char *key) {
     int index = hash(key);
-    if (table[index] == NULL)
-        return NULL;
-
-    if (table[index]->expires_at != 0) {
-        long long now = get_current_time_ms();
-        if (now >= table[index]->expires_at) {
-            free(table[index]->key);
-            if (table[index]->type == TYPE_STRING)
-                free(table[index]->value);
-            free(table[index]);     
-            table[index] = NULL;
-            return NULL;
+    Entry *entry = table[index];
+    while (entry != NULL) {
+        if (strcmp(entry->key, key) == 0) {
+            if (entry->expires_at != 0) {
+                long long now = get_current_time_ms();
+                if (now >= entry->expires_at) {
+                    // TODO: proper removal from chain
+                    return NULL;
+                }
+            }
+            return entry->value;
         }
+        entry = entry->next;
     }
-    return table[index]->value;
+    return NULL;
 }
+
 
 Entry *store_getEntry(char *key){
     printf("key in getEntry: %s\n", key);
