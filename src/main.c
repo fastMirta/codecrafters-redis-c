@@ -96,9 +96,24 @@ void replicaofHandler(int argc, char *argv[]) {
     }
 
     printf("No --replicaof flag, running as master\n");
+
 }
 
+int validate_server_response(int stepLevel, char *serversResponse){
+    printf("%s\n", serversResponse);
+    printf("step: %d\n", stepLevel);
+    printf("server response is +PONG? %d\n", strcmp(serversResponse, "+PONG\r\n") == 0);
+    printf("server response len %ld\n", strlen(serversResponse));
+    if(stepLevel == 0 && strcmp(serversResponse, "+PONG\r\n") != 0){return 1;}
+    if(stepLevel != 0 && strcmp(serversResponse, "+PONG\r\n") == 0){return 1;}
 
+    if(stepLevel == 0 && strcmp(serversResponse, "+PONG\r\n") == 0){return 0;}
+    if(stepLevel == 1 && strcmp(serversResponse, "") == 0){return 0;}
+
+    return 0;
+    ///home/tamir/codecrafters-redis-c/your_program.sh --port 6380 --replicaof "localhost 6379"
+
+}
 
 int main(int argc, char *argv[]) {
     setbuf(stdout, NULL);
@@ -161,12 +176,24 @@ int main(int argc, char *argv[]) {
     int active_fds = 1;
 
     replicaofHandler(argc, argv);
+    char serverResponse[1024];
+    recv(server_config.master_fd, serverResponse, sizeof(serverResponse) - 1, 0);
+    printf("Data recieved from server: %s\n", serverResponse);
+    int validRes = validate_server_response(0, serverResponse);
+    printf("response valid? %d\n", validRes == 0);
+    if(validRes == 0){
+        printf("Sure is valid\n");
+        handle_replconf();
+    }
+    else{
+        printf("Not valid\n");
+    }
     while(1) {
         int poll_count = poll(watch_list, active_fds, 100);
 
         long long now = get_current_time_ms();
 
-        // Check for timed-out blocked clients
+        // Check for timed out blocked clients
         for (int i = 1; i < active_fds; i++) {
             if (clients[i] && clients[i]->is_blocked
                     && clients[i]->timeout_at != 0

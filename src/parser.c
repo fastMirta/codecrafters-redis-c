@@ -7,7 +7,6 @@
 
 
 
-// parser.c
 int parse(char **client_input, RespRequest *request){
     if(*client_input == NULL) return 1;
 
@@ -26,6 +25,7 @@ int parse(char **client_input, RespRequest *request){
     free(firstLine);
 
     for(int i = 0; i < loopLen; i++){
+        printf("client input: %s\n", *client_input);
         char *lenLine = getLine(*client_input);
         if(getPrefix(lenLine, prefix) != 0){
             free(lenLine);
@@ -105,6 +105,7 @@ REDIS_CMDS findRedisCmd(char *cmdName) {
     if (strcmp(cmdName, "ECHO") == 0) return ECHO;
     if (strcmp(cmdName, "PING") == 0) return PING;
     if (strcmp(cmdName, "INFO") == 0) return INFO;
+    if (strcmp(cmdName, "REPLCONF") == 0) return REPLCONF;
     if (strcmp(cmdName, "AUTH") == 0) return AUTH;
     if (strcmp(cmdName, "SELECT") == 0) return SELECT;
     if (strcmp(cmdName, "COMMAND") == 0) return COMMAND;

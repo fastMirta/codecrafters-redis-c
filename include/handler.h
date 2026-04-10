@@ -5,6 +5,7 @@
 #include <netinet/ip.h>
 #include "parser.h"
 #include "utils.h"
+#include "utility_handler.h"
 #include "transaction_handler.h"
 
 #define MAX_CLIENTS 100

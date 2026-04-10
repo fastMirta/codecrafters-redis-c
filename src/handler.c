@@ -693,6 +693,10 @@ int handle(RespRequest *req, Client *client) {
         handle_info(req, client->fd);
         return 0; 
     }
+    if (req->command == REPLCONF) {
+        send(client->fd, "+OK\r\n", 5, 0);
+        return 0; 
+    }
     if (req->command == AUTH || req->command == SELECT || req->command == COMMAND) {
         send(client->fd, "+OK\r\n", 5, 0);
         return 0; 

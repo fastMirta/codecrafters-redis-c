@@ -11,6 +11,7 @@ typedef enum {
     ECHO,
     PING,
     INFO,
+    REPLCONF,
     AUTH,
     SELECT,
     COMMAND,

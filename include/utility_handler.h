@@ -4,6 +4,6 @@
 #include "handler.h"
 
 void handle_info(RespRequest *req ,int client_fd);
-
+void handle_replconf();
 
 #endif
