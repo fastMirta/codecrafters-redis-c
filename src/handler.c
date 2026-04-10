@@ -64,7 +64,7 @@ int handle_set_flags(RespRequest *req, int *expireAt, TIME_FLAGS *flag){
 
 void handle_ping(int client_fd){
     const char *ping_response = "+PONG\r\n";
-    printf("Client fd: %d", client_fd);
+    printf("Client fd in ping: %d\n", client_fd);
     if(send(client_fd, ping_response, strlen(ping_response), 0) != -1){
         printf("SEND SUCCESS");
     }

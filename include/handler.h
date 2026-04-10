@@ -28,6 +28,7 @@ typedef struct {
     int master_repl_offset;
     char *master_host;
     int master_port;
+    int master_fd;
 
 } RedisConfig;
 

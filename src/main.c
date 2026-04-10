@@ -9,10 +9,10 @@
 #include <poll.h>
 #include <ctype.h>
 #include <time.h>
+#include <arpa/inet.h>
 #include "parser.h"
 #include "handler.h"
 
-const char *response = "+PONG\r\n";
 RedisConfig server_config;
 Client *clients[MAX_CLIENTS];
 
@@ -38,45 +38,71 @@ int findPortIndex(int argc, char *argv[], int *portIndex){
     return 1;
 }
 
-void replicaofHandler(int argc, char *argv[]){    
-    if(argc < 3){
-        printf("Left and made a master\n");
-        server_config.role = "master";
-        return;
+int connect_to_master(const char *host, int port) {
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in master_addr;
+    
+    master_addr.sin_family = AF_INET;
+    master_addr.sin_port = htons(port);
+    inet_pton(AF_INET, "127.0.0.1", &master_addr.sin_addr); 
+
+    if (connect(sock, (struct sockaddr *)&master_addr, sizeof(master_addr)) < 0) {
+        perror("Connect to master failed");
+        return -1;
     }
-
-
-    printf("argv[1] = %s\n", argv[1]);
-    printf("argc: %d\n", argc);
-    printf("argv[5] = %s\n", argv[5]);
-    int replicaofIndex = -1;
-    for(int i = 0; i < argc; i++){
-        printf("argv[%d] = %s\n", i, argv[i]);
-        printf("Equal to replicaof: %d\n", strcmp(argv[i], "--replicaof") == 0);
-        printf("i + 2 < argc: %d\n", i + 2 <= argc);
-        if(strcmp(argv[i], "--replicaof") == 0 && i + 2 <= argc){
-            server_config.role = "slave";
-            replicaofIndex = i;
-        }
-
-        if(i == replicaofIndex + 1 && replicaofIndex != -1){
-            server_config.master_host = strdup(argv[i]);
-            strcpy(server_config.master_host, argv[i]);
-        }
-
-        if(i == replicaofIndex + 2 && replicaofIndex != -1){
-            server_config.master_port = atoi(argv[i]);
-        }
-
-
-    }
-    printf("The role is: %s\n", server_config.role);
+    return sock; 
 }
+
+/**Handles replicaof cmd */
+void replicaofHandler(int argc, char *argv[]) {    
+    server_config.role = "master"; 
+
+    for (int i = 0; i < argc; i++) {
+        if (strcmp(argv[i], "--replicaof") == 0 && i + 1 < argc) {
+            server_config.role = "slave";
+
+            char *arg = argv[i + 1];
+            
+            char *space = strchr(arg, ' ');
+
+            //Checks if there are spaces in one argument so it would seperate them
+            if (space != NULL) {
+                int hostLen = space - arg;
+                server_config.master_host = malloc(hostLen + 1);
+                strncpy(server_config.master_host, arg, hostLen);
+                server_config.master_host[hostLen] = '\0';
+                server_config.master_port = atoi(space + 1);
+            } else if (i + 2 < argc) {
+                server_config.master_host = strdup(argv[i + 1]);
+                server_config.master_port = atoi(argv[i + 2]);
+            } else {
+                printf("ERROR: --replicaof missing host/port\n");
+                return;
+            }
+
+            printf("Connecting to master %s:%d\n", server_config.master_host, server_config.master_port);
+            server_config.master_fd = connect_to_master(server_config.master_host, server_config.master_port);
+            
+            if (server_config.master_fd < 0) {
+                printf("ERROR: Failed to connect to master\n");
+                return;
+            }
+
+            const char *ping_cmd = "*1\r\n$4\r\nPING\r\n";
+            send(server_config.master_fd, ping_cmd, strlen(ping_cmd), 0);
+            printf("Sent PING to master\n");
+            return;
+        }
+    }
+
+    printf("No --replicaof flag, running as master\n");
+}
+
+
 
 int main(int argc, char *argv[]) {
     setbuf(stdout, NULL);
     setbuf(stderr, NULL);
-
     struct pollfd watch_list[MAX_CLIENTS];
 
     // Zero everything and set all fds to -1 so poll() skips unused slots
@@ -121,7 +147,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    replicaofHandler(argc, argv);
     server_config.port = port;
     server_config.master_replid = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb";
     server_config.master_repl_offset = 0;
@@ -135,6 +160,7 @@ int main(int argc, char *argv[]) {
     watch_list[0].revents = 0;
     int active_fds = 1;
 
+    replicaofHandler(argc, argv);
     while(1) {
         int poll_count = poll(watch_list, active_fds, 100);
 
@@ -151,7 +177,7 @@ int main(int argc, char *argv[]) {
                     i, now, clients[i]->timeout_at);
                 printf("Client at fd %d timed out\n", watch_list[i].fd);
             }
-        }
+        }///home/tamir/codecrafters-redis-c/your_program.sh --port 6381 --replicaof "localhost 6379"
 
         if (poll_count <= 0) continue;
 
