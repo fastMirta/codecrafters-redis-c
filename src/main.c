@@ -40,9 +40,11 @@ int findPortIndex(int argc, char *argv[], int *portIndex){
 
 void replicaofHandler(int argc, char *argv[]){    
     if(argc < 3){
+        printf("Left and made a master\n");
         server_config.role = "master";
         return;
     }
+
 
     printf("argv[1] = %s\n", argv[1]);
     printf("argc: %d\n", argc);
@@ -50,7 +52,9 @@ void replicaofHandler(int argc, char *argv[]){
     int replicaofIndex = -1;
     for(int i = 0; i < argc; i++){
         printf("argv[%d] = %s\n", i, argv[i]);
-        if(strcmp(argv[i], "--replicaof") == 0 && i + 2 < argc){
+        printf("Equal to replicaof: %d\n", strcmp(argv[i], "--replicaof") == 0);
+        printf("i + 2 < argc: %d\n", i + 2 <= argc);
+        if(strcmp(argv[i], "--replicaof") == 0 && i + 2 <= argc){
             server_config.role = "slave";
             replicaofIndex = i;
         }
@@ -66,6 +70,7 @@ void replicaofHandler(int argc, char *argv[]){
 
 
     }
+    printf("The role is: %s\n", server_config.role);
 }
 
 int main(int argc, char *argv[]) {
