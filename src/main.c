@@ -44,7 +44,12 @@ int main(int argc, char *argv[]) {
 
     struct pollfd watch_list[MAX_CLIENTS];
 
-    for (int i = 0; i < MAX_CLIENTS; i++) clients[i] = NULL;
+    // Zero everything and set all fds to -1 so poll() skips unused slots
+    memset(watch_list, 0, sizeof(watch_list));
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        clients[i] = NULL;
+        watch_list[i].fd = -1;
+    }
 
     int server_fd;
     struct sockaddr_in client_addr;
@@ -69,6 +74,7 @@ int main(int argc, char *argv[]) {
     else{
         printf("DEUBG: didnt not find port\n");
     }
+
     struct sockaddr_in serv_addr = {
         .sin_family = AF_INET,
         .sin_port = htons(port),
@@ -86,6 +92,7 @@ int main(int argc, char *argv[]) {
 
     watch_list[0].fd = server_fd;
     watch_list[0].events = POLLIN;
+    watch_list[0].revents = 0;
     int active_fds = 1;
 
     while(1) {
@@ -93,8 +100,11 @@ int main(int argc, char *argv[]) {
 
         long long now = get_current_time_ms();
 
+        // Check for timed-out blocked clients
         for (int i = 1; i < active_fds; i++) {
-            if (clients[i] && clients[i]->is_blocked && now >= clients[i]->timeout_at && clients[i]->timeout_at != 0) {
+            if (clients[i] && clients[i]->is_blocked
+                    && clients[i]->timeout_at != 0
+                    && now >= clients[i]->timeout_at) {
                 send(watch_list[i].fd, "*-1\r\n", 5, 0);
                 clients[i]->is_blocked = 0;
                 printf("Checking client %d: now=%lld, target=%lld\n",
@@ -106,71 +116,82 @@ int main(int argc, char *argv[]) {
         if (poll_count <= 0) continue;
 
         for (int i = 0; i < active_fds; i++) {
-            if (watch_list[i].revents & POLLIN) {
+            if (!(watch_list[i].revents & POLLIN)) continue;
 
-                if (i == 0) {
-                    int new_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_addr_len);
-                    if (active_fds < MAX_CLIENTS) {
-                        watch_list[active_fds].fd = new_fd;
-                        watch_list[active_fds].events = POLLIN;
+            if (i == 0) {
+                // New connection on server socket
+                int new_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_addr_len);
+                if (new_fd < 0) continue;
 
-                        clients[active_fds] = calloc(1, sizeof(Client));
-                        clients[active_fds]->fd = new_fd;
-                        clients[active_fds]->is_blocked = 0;
+                if (active_fds < MAX_CLIENTS) {
+                    watch_list[active_fds].fd = new_fd;
+                    watch_list[active_fds].events = POLLIN;
+                    watch_list[active_fds].revents = 0; // explicitly zero — don't trigger this round
 
-                        active_fds++;
-                        printf("New client joined! active_fds: %d\n", active_fds);
-                    } else {
-                        close(new_fd);
-                    }
+                    clients[active_fds] = calloc(1, sizeof(Client));
+                    clients[active_fds]->fd = new_fd;
+                    clients[active_fds]->is_blocked = 0;
+                    clients[active_fds]->is_queued = 0;
+                    clients[active_fds]->queuedCommands = 0;
+
+                    active_fds++;
+                    printf("New client joined! active_fds: %d\n", active_fds);
+                } else {
+                    close(new_fd);
                 }
-                else {
-                    if (clients[i]->is_blocked) continue;
+                continue;
+            }
 
-                    char buffer[4096];
-                    int bytes_received = recv(watch_list[i].fd, buffer, sizeof(buffer) - 1, 0);
+            // Existing client
+            if (clients[i]->is_blocked) continue;
 
-                    if (bytes_received <= 0) {
-                        printf("Client disconnected at index %d, fd %d\n", i, watch_list[i].fd);
-                        close(watch_list[i].fd);
-                        if (clients[i]) free(clients[i]);
+            char buffer[4096];
+            int bytes_received = recv(watch_list[i].fd, buffer, sizeof(buffer) - 1, 0);
 
-                        watch_list[i] = watch_list[active_fds - 1];
-                        clients[i] = clients[active_fds - 1];
-                        clients[active_fds - 1] = NULL;
-                        watch_list[active_fds - 1].fd = -1;
-                        active_fds--;
-                        i--;
-                    } else {
-                        buffer[bytes_received] = '\0';
-                        char *ptr = buffer;
-                        char *end = buffer + bytes_received;
+            if (bytes_received <= 0) {
+                printf("Client disconnected at index %d, fd %d\n", i, watch_list[i].fd);
+                close(watch_list[i].fd);
+                if (clients[i]) free(clients[i]);
 
-                        while (ptr < end) {
-                            // skip to next RESP command start
-                            while (ptr < end && *ptr != '*') ptr++;
-                            if (ptr >= end) break;
+                // Swap with last slot
+                watch_list[i] = watch_list[active_fds - 1];
+                clients[i] = clients[active_fds - 1];
 
-                            char *before = ptr;
-                            RespRequest request = {0};
-                            int result = parse(&ptr, &request);
+                // Clear the old last slot
+                clients[active_fds - 1] = NULL;
+                watch_list[active_fds - 1].fd = -1;
+                watch_list[active_fds - 1].revents = 0;
 
-                            if (result != 0) {
-                                ptr = before + 1;
-                                continue;
-                            }
+                active_fds--;
+                i--; // re-check this index since we swapped a new client in
+            } else {
+                buffer[bytes_received] = '\0';
+                char *ptr = buffer;
+                char *end = buffer + bytes_received;
 
-                            printf("main loop: clients[%d] ptr = %p, fd = %d\n",
-                                i, (void*)clients[i], clients[i]->fd);
-                            printf("watch_list[%d].fd=%d  clients[%d]->fd=%d\n",
-                                i, watch_list[i].fd, i, clients[i]->fd);
+                while (ptr < end) {
+                    // Skip to next RESP command start
+                    while (ptr < end && *ptr != '*') ptr++;
+                    if (ptr >= end) break;
 
-                            handle(&request, clients[i]);
+                    char *before = ptr;
+                    RespRequest request = {0};
+                    int result = parse(&ptr, &request);
 
-                            for (int a = 0; a < request.argc; a++)
-                                free(request.args[a]);
-                        }
+                    if (result != 0) {
+                        ptr = before + 1;
+                        continue;
                     }
+
+                    printf("main loop: clients[%d] ptr = %p, fd = %d\n",
+                        i, (void*)clients[i], clients[i]->fd);
+                    printf("watch_list[%d].fd=%d  clients[%d]->fd=%d\n",
+                        i, watch_list[i].fd, i, clients[i]->fd);
+
+                    handle(&request, clients[i]);
+
+                    for (int a = 0; a < request.argc; a++)
+                        free(request.args[a]);
                 }
             }
         }
