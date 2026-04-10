@@ -216,7 +216,7 @@ int main(int argc, char *argv[]) {
 
                     char *before = ptr;
                     RespRequest request = {0};
-                    server_config.master_repl_offset++;
+                    //server_config.master_repl_offset++;
                     int result = parse(&ptr, &request);
 
                     if (result != 0) {
