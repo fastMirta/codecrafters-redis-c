@@ -26,6 +26,9 @@ typedef struct {
     char *role; 
     char *master_replid; 
     int master_repl_offset;
+    char *master_host;
+    int master_port;
+
 } RedisConfig;
 
 extern RedisConfig server_config;

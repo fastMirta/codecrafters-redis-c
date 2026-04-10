@@ -38,6 +38,34 @@ int findPortIndex(int argc, char *argv[], int *portIndex){
     return 1;
 }
 
+void replicaofHandler(int argc, char *argv[]){
+    if(argc < 3){
+        return;
+    }
+    printf("argv[1] = %s\n", argv[1]);
+    printf("argc: %d\n", argc);
+    printf("argv[5] = %s\n", argv[5]);
+    int replicaofIndex = -1;
+    for(int i = 0; i < argc; i++){
+        printf("argv[%d] = %s\n", i, argv[i]);
+        if(strcmp(argv[i], "--replicaof") == 0 && i + 2 < argc){
+            server_config.role = "slave";
+            replicaofIndex = i;
+        }
+
+        if(i == replicaofIndex + 1 && replicaofIndex != -1){
+            server_config.master_host = strdup(argv[i]);
+            strcpy(server_config.master_host, argv[i]);
+        }
+
+        if(i == replicaofIndex + 2 && replicaofIndex != -1){
+            server_config.master_port = atoi(argv[i]);
+        }
+
+
+    }
+}
+
 int main(int argc, char *argv[]) {
     setbuf(stdout, NULL);
     setbuf(stderr, NULL);
@@ -86,8 +114,8 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    replicaofHandler(argc, argv);
     server_config.port = port;
-    server_config.role = "master"; 
     server_config.master_replid = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb";
     server_config.master_repl_offset = 0;
 
