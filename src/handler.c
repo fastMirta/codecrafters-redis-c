@@ -697,6 +697,14 @@ int handle(RespRequest *req, Client *client) {
         send(client->fd, "+OK\r\n", 5, 0);
         return 0; 
     }
+    if (req->command == PSYNC) {
+        char replId[1024];
+        snprintf(replId, sizeof(replId), "+FULLRESYNC %s %lld\r\n", 
+         server_config.master_replid, 
+         server_config.master_repl_offset);
+        send(client->fd, replId, strlen(replId), 0);
+        return 0; 
+    }
     if (req->command == AUTH || req->command == SELECT || req->command == COMMAND) {
         send(client->fd, "+OK\r\n", 5, 0);
         return 0; 

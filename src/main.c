@@ -104,16 +104,19 @@ int validate_server_response(int stepLevel, char *serversResponse){
     printf("step: %d\n", stepLevel);
     printf("server response is +PONG? %d\n", strcmp(serversResponse, "+PONG\r\n") == 0);
     printf("server response len %ld\n", strlen(serversResponse));
-    if(stepLevel == 0 && strcmp(serversResponse, "+PONG\r\n") != 0){return 1;}
-    if(stepLevel != 0 && strcmp(serversResponse, "+PONG\r\n") == 0){return 1;}
 
     if(stepLevel == 0 && strcmp(serversResponse, "+PONG\r\n") == 0){return 0;}
-    if(stepLevel == 1 && strcmp(serversResponse, "") == 0){return 0;}
+    if(stepLevel == 1 && strcmp(serversResponse, "+OK\r\n") == 0){return 0;}
+    if (stepLevel == 2) {
+        if (strncmp(serversResponse, "+FULLRESYNC", 11) == 0) {
+            return 0; 
+        }
+    }
 
-    return 0;
-    ///home/tamir/codecrafters-redis-c/your_program.sh --port 6380 --replicaof "localhost 6379"
+    return 1;
 
 }
+
 
 int main(int argc, char *argv[]) {
     setbuf(stdout, NULL);
@@ -183,7 +186,20 @@ int main(int argc, char *argv[]) {
     printf("response valid? %d\n", validRes == 0);
     if(validRes == 0){
         printf("Sure is valid\n");
-        handle_replconf();
+        handle_replconf(serverResponse, sizeof(serverResponse));
+        //recv(server_config.master_fd, serverResponse, sizeof(serverResponse) - 1, 0);
+        validRes = validate_server_response(1, serverResponse);
+        if(validRes == 0){
+            printf("Finished second step\r\n");
+            handle_psync("?", -1);
+            recv(server_config.master_fd, serverResponse, sizeof(serverResponse) - 1, 0);
+            printf("finished last step?\n");
+            printf("response to last step: %s\n", serverResponse);
+        }
+        else{
+            printf("last step isnt valid");
+        }
+        
     }
     else{
         printf("Not valid\n");

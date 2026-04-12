@@ -26,7 +26,7 @@ typedef struct {
     int port;
     char *role; 
     char *master_replid; 
-    int master_repl_offset;
+    long long master_repl_offset;
     char *master_host;
     int master_port;
     int master_fd;
