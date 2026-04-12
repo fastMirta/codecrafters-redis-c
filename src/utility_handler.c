@@ -35,7 +35,6 @@ void handle_replconf(char *response, long responseSize) {
     printf("Entered handle_replconf\n");
     
     char replconfData[1024];
-    //char response[1024];
     int len;
 
     char portStr[16];
@@ -51,12 +50,13 @@ void handle_replconf(char *response, long responseSize) {
     printf("Master response to REPLCONF listening-port: %s\n", response);
 
     len = snprintf(replconfData, sizeof(replconfData),
-        "*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n");
+        "*5\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$3\r\neof\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n");
+
     send(server_config.master_fd, replconfData, len, 0);
 
     memset(response, 0, responseSize);
     recv(server_config.master_fd, response, responseSize - 1, 0);
-    printf("Master response to REPLCONF capa psync2: %s\n", response);
+    printf("Master response to REPLCONF capabilities: %s\n", response);
 }
 
 void handle_psync(char *replicationId, int offset){

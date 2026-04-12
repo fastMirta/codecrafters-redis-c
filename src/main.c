@@ -178,6 +178,8 @@ int main(int argc, char *argv[]) {
     watch_list[0].revents = 0;
     int active_fds = 1;
 
+
+    //TODO: refactor the handshake code into a function
     replicaofHandler(argc, argv);
     char serverResponse[1024];
     recv(server_config.master_fd, serverResponse, sizeof(serverResponse) - 1, 0);
@@ -187,14 +189,18 @@ int main(int argc, char *argv[]) {
     if(validRes == 0){
         printf("Sure is valid\n");
         handle_replconf(serverResponse, sizeof(serverResponse));
-        //recv(server_config.master_fd, serverResponse, sizeof(serverResponse) - 1, 0);
         validRes = validate_server_response(1, serverResponse);
         if(validRes == 0){
             printf("Finished second step\r\n");
             handle_psync("?", -1);
-            recv(server_config.master_fd, serverResponse, sizeof(serverResponse) - 1, 0);
+            long long byteRead = recv(server_config.master_fd, serverResponse, sizeof(serverResponse) - 1, 0);
+            printf("bytes read: %lld\n", byteRead);
             printf("finished last step?\n");
             printf("response to last step: %s\n", serverResponse);
+            for (int i = 0; i < byteRead; i++) {
+                printf("%02x ", (unsigned char)serverResponse[i]);
+            }
+
         }
         else{
             printf("last step isnt valid");
