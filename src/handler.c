@@ -715,6 +715,8 @@ int handle(RespRequest *req, Client *client) {
         send(client->fd, header, header_len, 0);
 
         send(client->fd, empty_rdb, sizeof(empty_rdb), 0);
+
+        client->is_replica = 1;
         return 0; 
     }
     if (req->command == AUTH || req->command == SELECT || req->command == COMMAND) {

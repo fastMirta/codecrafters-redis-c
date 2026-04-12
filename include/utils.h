@@ -4,6 +4,7 @@
 #include <time.h>
 #include <string.h>
 #include <ctype.h>
+#include "parser.h"
 
 #define TABLE_SIZE 1024
 
@@ -62,5 +63,6 @@ int isBigger(char *srcId, char *checkId);
 char* streamEntry_XREAD_Mul_toString(int len, char *keyArray[], char *idArrays[]);
 void printValue(StreamEntry *entry);
 StreamEntry* lastStreamEntry(char *key);
+int isWriteCmd(REDIS_CMDS cmd);
 
 #endif

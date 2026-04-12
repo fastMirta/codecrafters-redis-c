@@ -359,4 +359,27 @@ char* streamEntry_XREAD_Mul_toString(int len, char *keyArray[], char *idArrays[]
 
 
 
+/**Checks if given cmd is part of write cmd
+ * return 0 for true or 1 for false
+ */
+int isWriteCmd(REDIS_CMDS cmd){
+    if (cmd == SET)  {return 0;}
+    if (cmd == DEL)  {return 0;}
+    if (cmd == APPEND) {return 0;}
+    if (cmd == EXPIRE) {return 0;}
+    if (cmd == INCR) {return 0;}
+    if (cmd == DECR) {return 0;}
+    if (cmd == XADD) {return 0;}
+    if (cmd == SADD) {return 0;}
+    if (cmd == SREM) {return 0;}
+    if (cmd == HSET) {return 0;}
+    if (cmd == HDEL) {return 0;}
+    if (cmd == LPUSH) {return 0;}
+    if (cmd == RPUSH) {return 0;}
+    if (cmd == LPOP) {return 0;}
+    if (cmd == RPOP) {return 0;}
+
+    return 1;
+}
+
 

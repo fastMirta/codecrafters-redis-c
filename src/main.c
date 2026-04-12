@@ -117,13 +117,94 @@ int validate_server_response(int stepLevel, char *serversResponse){
 
 }
 
+const char* cmd_to_string(REDIS_CMDS cmd) {
+    switch(cmd) {
+        case ECHO:     return "ECHO";
+        case PING:     return "PING";
+        case INFO:     return "INFO";
+        case REPLCONF: return "REPLCONF";
+        case PSYNC:    return "PSYNC";
+        case AUTH:     return "AUTH";
+        case SELECT:   return "SELECT";
+        case COMMAND:  return "COMMAND";
+        case SET:      return "SET";
+        case GET:      return "GET";
+        case DEL:      return "DEL";
+        case EXISTS:   return "EXISTS";
+        case EXPIRE:   return "EXPIRE";
+        case TTL:      return "TTL";
+        case TYPE:     return "TYPE";
+        case INCR:     return "INCR";
+        case DECR:     return "DECR";
+        case APPEND:   return "APPEND";
+        case STRLEN:   return "STRLEN";
+        case MGET:     return "MGET";
+        case MULTI:    return "MULTI";
+        case EXEC:     return "EXEC";
+        case DISCARD:  return "DISCARD";
+        case WATCH:    return "WATCH";
+        case LPUSH:    return "LPUSH";
+        case RPUSH:    return "RPUSH";
+        case LPOP:     return "LPOP";
+        case RPOP:     return "RPOP";
+        case LLEN:     return "LLEN";
+        case LRANGE:   return "LRANGE";
+        case HSET:     return "HSET";
+        case HGET:     return "HGET";
+        case HGETALL:  return "HGETALL";
+        case HDEL:     return "HDEL";
+        case SADD:     return "SADD";
+        case SREM:     return "SREM";
+        case SMEMBERS: return "SMEMBERS";
+        case SISMEMBER:return "SISMEMBER";
+        case XADD:     return "XADD";
+        case XREAD:    return "XREAD";
+        case XRANGE:   return "XRANGE";
+        case XGROUP:   return "XGROUP";
+        default:       return "UNKNOWN";
+    }
+}
+
+int copy_request_toBuffer(RespRequest *req, char *buffer, int bufferSize) {
+    int offset = 0;
+    const char *cmd_str = cmd_to_string(req->command);
+
+    // List prefix "*"
+    offset += snprintf(buffer + offset, bufferSize - offset, "*%d\r\n", req->argc + 1);
+
+    // command name
+    offset += snprintf(buffer + offset, bufferSize - offset, "$%zu\r\n%s\r\n", strlen(cmd_str), cmd_str);
+
+    // args
+    for (int i = 0; i < req->argc; i++) {
+        offset += snprintf(buffer + offset, bufferSize - offset, "$%zu\r\n%s\r\n", strlen(req->args[i]), req->args[i]);
+    }
+
+    return offset;
+}
+
+/**Sends Write cmd to all replica */
+void pass_data_toReplica(RespRequest *req){
+    printf("pass_data_toReplica called, cmd=%d\n", req->command);
+    if(isWriteCmd(req->command) == 0){
+        printf("is write cmd, scanning clients\n");
+        for(int i = 0; i < MAX_CLIENTS; i++){
+            if(clients[i]) printf("clients[%d] is_replica=%d\n", i, clients[i]->is_replica);
+            if(clients[i] && clients[i]->is_replica){
+                char requestAsStr[1024];
+                int len = copy_request_toBuffer(req, requestAsStr, sizeof(requestAsStr));
+                printf("data sent to replica: %s", requestAsStr);
+                send(clients[i]->fd, requestAsStr, len, 0);
+            }
+        }
+    }
+}
 
 int main(int argc, char *argv[]) {
     setbuf(stdout, NULL);
     setbuf(stderr, NULL);
     struct pollfd watch_list[MAX_CLIENTS];
 
-    // Zero everything and set all fds to -1 so poll() skips unused slots
     memset(watch_list, 0, sizeof(watch_list));
     for (int i = 0; i < MAX_CLIENTS; i++) {
         clients[i] = NULL;
@@ -149,9 +230,8 @@ int main(int argc, char *argv[]) {
         printf("WORKED!!!\n");
         printf("DEBUG: port index: argv[%d] = %s\n", portIndex, argv[portIndex]);
         port = atoi(argv[portIndex]);
-    }
-    else{
-        printf("DEUBG: didnt not find port\n");
+    } else {
+        printf("DEBUG: did not find port\n");
     }
 
     struct sockaddr_in serv_addr = {
@@ -178,55 +258,54 @@ int main(int argc, char *argv[]) {
     watch_list[0].revents = 0;
     int active_fds = 1;
 
-
-    //TODO: refactor the handshake code into a function
     replicaofHandler(argc, argv);
-    char serverResponse[1024];
-    recv(server_config.master_fd, serverResponse, sizeof(serverResponse) - 1, 0);
-    printf("Data recieved from server: %s\n", serverResponse);
-    int validRes = validate_server_response(0, serverResponse);
-    printf("response valid? %d\n", validRes == 0);
-    if(validRes == 0){
-        printf("Sure is valid\n");
-        handle_replconf(serverResponse, sizeof(serverResponse));
-        validRes = validate_server_response(1, serverResponse);
-        if(validRes == 0){
-            printf("Finished second step\r\n");
-            handle_psync("?", -1);
-            long long byteRead = recv(server_config.master_fd, serverResponse, sizeof(serverResponse) - 1, 0);
-            printf("bytes read: %lld\n", byteRead);
-            printf("finished last step?\n");
-            printf("response to last step: %s\n", serverResponse);
-            for (int i = 0; i < byteRead; i++) {
-                printf("%02x ", (unsigned char)serverResponse[i]);
-            }
 
+    // Does handshake only for slave
+    if (strcmp(server_config.role, "slave") == 0) {
+        char serverResponse[1024];
+        memset(serverResponse, 0, sizeof(serverResponse));
+
+        recv(server_config.master_fd, serverResponse, sizeof(serverResponse) - 1, 0);
+        printf("Data received from server: %s\n", serverResponse);
+
+        int validRes = validate_server_response(0, serverResponse);
+        if (validRes == 0) {
+            handle_replconf(serverResponse, sizeof(serverResponse));
+            validRes = validate_server_response(1, serverResponse);
+            if (validRes == 0) {
+                handle_psync("?", -1);
+                long long byteRead = recv(server_config.master_fd, serverResponse, sizeof(serverResponse) - 1, 0);
+                printf("bytes read: %lld\n", byteRead);
+                printf("response to last step: %s\n", serverResponse);
+            } else {
+                printf("last step isn't valid\n");
+            }
+        } else {
+            printf("Not valid\n");
         }
-        else{
-            printf("last step isnt valid");
-        }
-        
+
+        watch_list[active_fds].fd = server_config.master_fd;
+        watch_list[active_fds].events = POLLIN;
+        watch_list[active_fds].revents = 0;
+        clients[active_fds] = calloc(1, sizeof(Client));
+        clients[active_fds]->fd = server_config.master_fd;
+        active_fds++;
+        printf("Added master_fd to watch list\n");
     }
-    else{
-        printf("Not valid\n");
-    }
+
     while(1) {
         int poll_count = poll(watch_list, active_fds, 100);
 
         long long now = get_current_time_ms();
 
-        // Check for timed out blocked clients
         for (int i = 1; i < active_fds; i++) {
             if (clients[i] && clients[i]->is_blocked
                     && clients[i]->timeout_at != 0
                     && now >= clients[i]->timeout_at) {
                 send(watch_list[i].fd, "*-1\r\n", 5, 0);
                 clients[i]->is_blocked = 0;
-                printf("Checking client %d: now=%lld, target=%lld\n",
-                    i, now, clients[i]->timeout_at);
-                printf("Client at fd %d timed out\n", watch_list[i].fd);
             }
-        }///home/tamir/codecrafters-redis-c/your_program.sh --port 6381 --replicaof "localhost 6379"
+        }
 
         if (poll_count <= 0) continue;
 
@@ -234,14 +313,13 @@ int main(int argc, char *argv[]) {
             if (!(watch_list[i].revents & POLLIN)) continue;
 
             if (i == 0) {
-                // New connection on server socket
                 int new_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_addr_len);
                 if (new_fd < 0) continue;
 
                 if (active_fds < MAX_CLIENTS) {
                     watch_list[active_fds].fd = new_fd;
                     watch_list[active_fds].events = POLLIN;
-                    watch_list[active_fds].revents = 0; // explicitly zero — don't trigger this round
+                    watch_list[active_fds].revents = 0;
 
                     clients[active_fds] = calloc(1, sizeof(Client));
                     clients[active_fds]->fd = new_fd;
@@ -257,7 +335,6 @@ int main(int argc, char *argv[]) {
                 continue;
             }
 
-            // Existing client
             if (clients[i]->is_blocked) continue;
 
             char buffer[4096];
@@ -268,11 +345,9 @@ int main(int argc, char *argv[]) {
                 close(watch_list[i].fd);
                 if (clients[i]) free(clients[i]);
 
-                // Swap with last slot
                 watch_list[i] = watch_list[active_fds - 1];
                 clients[i] = clients[active_fds - 1];
 
-                // Clear the old last slot
                 clients[active_fds - 1] = NULL;
                 watch_list[active_fds - 1].fd = -1;
                 watch_list[active_fds - 1].revents = 0;
@@ -285,13 +360,11 @@ int main(int argc, char *argv[]) {
                 char *end = buffer + bytes_received;
 
                 while (ptr < end) {
-                    // Skip to next RESP command start
                     while (ptr < end && *ptr != '*') ptr++;
                     if (ptr >= end) break;
 
                     char *before = ptr;
                     RespRequest request = {0};
-                    //server_config.master_repl_offset++;
                     int result = parse(&ptr, &request);
 
                     if (result != 0) {
@@ -299,12 +372,12 @@ int main(int argc, char *argv[]) {
                         continue;
                     }
 
-                    printf("main loop: clients[%d] ptr = %p, fd = %d\n",
-                        i, (void*)clients[i], clients[i]->fd);
-                    printf("watch_list[%d].fd=%d  clients[%d]->fd=%d\n",
-                        i, watch_list[i].fd, i, clients[i]->fd);
-
                     handle(&request, clients[i]);
+
+                    // Only propagate to replicas if this came from a real client, not from master
+                    if (clients[i]->fd != server_config.master_fd) {
+                        pass_data_toReplica(&request);
+                    }
 
                     for (int a = 0; a < request.argc; a++)
                         free(request.args[a]);
