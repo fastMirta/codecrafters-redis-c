@@ -70,6 +70,26 @@ void handle_psync(char *replicationId, int offset){
     send(server_config.master_fd, psyncData, strlen(psyncData), 0);
 }
 
+void replconf_handle_getack() {
+    char buf[128];
+    char offsetStr[32];
+    int offsetLen = snprintf(offsetStr, sizeof(offsetStr), "%lld", server_config.master_repl_offset);
+
+    int len = snprintf(buf, sizeof(buf),
+        "*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$%d\r\n%s\r\n",
+        offsetLen, offsetStr);
+
+    send(server_config.master_fd, buf, len, 0);
+}
+
+void replconf_handle_ack(RespRequest *request, Client *client) {
+    if (request->argc < 2) {
+        printf("Error: ACK missing offset argument\n");
+        return;
+    }
+    client->repl_offset = atoll(request->args[1]);
+    printf("Replica fd=%d acknowledged offset %lld\n", client->fd, client->repl_offset);
+}
 
 void handle_handshake(){
     

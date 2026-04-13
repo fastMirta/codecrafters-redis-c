@@ -694,8 +694,22 @@ int handle(RespRequest *req, Client *client) {
         return 0; 
     }
     if (req->command == REPLCONF) {
-        send(client->fd, "+OK\r\n", 5, 0);
-        return 0; 
+        if(req->argc < 1){
+            send(client->fd, "+OK\r\n", 5, 0);
+            return 0; 
+        }
+        
+        toUpper(req->args[0]);
+    
+        if (strcmp(req->args[0], "GETACK") == 0 && client->fd == server_config.master_fd) {
+            replconf_handle_getack();
+        } else if (strcmp(req->args[0], "ACK") == 0) {
+            replconf_handle_ack(req, client);
+        } else {
+            send(client->fd, "+OK\r\n", 5, 0);
+        }
+        
+        return 0;
     }
     if (req->command == PSYNC) {
         char replId[1024];
