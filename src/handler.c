@@ -686,7 +686,9 @@ int handle(RespRequest *req, Client *client) {
         return 0;
     }
     if (req->command == PING) {
-        handle_ping(client->fd);
+        if (client->fd != server_config.master_fd) {
+            handle_ping(client->fd);
+        }
         return 0; 
     }
     if (req->command == INFO) {
