@@ -12,6 +12,10 @@
 
 extern Client *clients[MAX_CLIENTS];
 
+static inline int from_master(Client *client) {
+    return client->fd == server_config.master_fd;
+}
+
 /**Copy src request to the dest request
  * @return ptr to dest request
  */
@@ -57,8 +61,6 @@ int handle_set_flags(RespRequest *req, int *expireAt, TIME_FLAGS *flag){
         return 0;
     }
     return 0;
-
-    
 }
 
 
@@ -78,7 +80,6 @@ void handle_echo(RespRequest *req, int client_fd){
     char response[1024];
     snprintf(response, sizeof(response), "$%zu\r\n%s\r\n", strlen(req->args[0]), req->args[0]);
 	send(client_fd, response, strlen(response), 0);
-
 }
 
 char* wrapXreadResponse(const char* key, const char* messages, int msgCount) {
@@ -170,7 +171,6 @@ void generateId(Stream *stream, StreamEntry *streamEntry) {
     long long finalMs, finalSeq;
     char idToString[48];
 
-    // partial auto-generate: "ms-*"
     if(strstr(streamEntry->id, "-*") != NULL){
         sscanf(streamEntry->id, "%lld-*", &finalMs);
         if(finalMs == stream->last_ms){
@@ -179,7 +179,6 @@ void generateId(Stream *stream, StreamEntry *streamEntry) {
             finalSeq = (finalMs == 0) ? 1 : 0;
         }
     }
-    // full auto-generate: "*"
     else {
         if(stream->head == NULL){
             finalMs = now;
@@ -208,8 +207,8 @@ void handle_set_stream(RespRequest *req, int client_fd, int isQueued){
         stream = calloc(1, sizeof(Stream));
         if(stream == NULL){
             errorResp = "-ERR Out of memory\r\n";
-            send(client_fd, errorResp, strlen(errorResp), 0);
-            free(errorResp);
+            if (client_fd != server_config.master_fd)
+                send(client_fd, errorResp, strlen(errorResp), 0);
             return;
         }
     } else {
@@ -224,7 +223,8 @@ void handle_set_stream(RespRequest *req, int client_fd, int isQueued){
         printValue(stream->tail);
         if(validate_stream_id(req, stream->tail, &errorResp) == 1){
             printf("error respond: %s\n", errorResp);
-            send(client_fd, errorResp, strlen(errorResp), 0);
+            if (client_fd != server_config.master_fd)
+                send(client_fd, errorResp, strlen(errorResp), 0);
             return;
         }
     }
@@ -232,9 +232,6 @@ void handle_set_stream(RespRequest *req, int client_fd, int isQueued){
     if(strchr(req->args[1], '*') != NULL){
         generateId(stream, streamEntry);
     }
-
-
-
 
     long long request_id_ms, request_id_seq;
     sscanf(streamEntry->id, "%lld-%lld", &request_id_ms, &request_id_seq);
@@ -260,14 +257,14 @@ void handle_set_stream(RespRequest *req, int client_fd, int isQueued){
         stream->length++;
     }
 
-
-    char response[128];
-    int len = snprintf(response, sizeof(response), "$%zu\r\n%s\r\n", strlen(streamEntry->id), streamEntry->id);
-    send(client_fd, response, len, 0);
+    if (client_fd != server_config.master_fd) {
+        char response[128];
+        int len = snprintf(response, sizeof(response), "$%zu\r\n%s\r\n", strlen(streamEntry->id), streamEntry->id);
+        send(client_fd, response, len, 0);
+    }
 
     printf("Boyya\n");
     for (int i = 0; i < MAX_CLIENTS; i++) {
-        //printf("client is null? %d\n", clients[i] == NULL);
         if (clients[i] && clients[i]->is_blocked) {
             printf("DEBUG: Found blocked client on FD %d waiting for %s. XADD key is %s\n", 
                 clients[i]->fd, clients[i]->waiting_for_key, req->args[0]);
@@ -306,14 +303,14 @@ void handle_set(RespRequest *req, RedisType type, int client_fd, int isQueued){
         int seconds = 0;
         if(handle_set_flags(req, &seconds, &time) == 0){
             store_set(req->args[0], req->args[1], time, seconds, type);
-            send(client_fd, "+OK\r\n", 5, 0);
+            if (client_fd != server_config.master_fd)
+                send(client_fd, "+OK\r\n", 5, 0);
         }
         else{
-            send(client_fd, "+FAIL\r\n", 7, 0);
+            if (client_fd != server_config.master_fd)
+                send(client_fd, "+FAIL\r\n", 7, 0);
         }
     }
-    
-
 }
 
 void handle_get(RespRequest *req, int client_fd) {
@@ -328,7 +325,6 @@ void handle_get(RespRequest *req, int client_fd) {
 }
 
 void handle_type(RespRequest *req, int client_fd, int isQueued){
-    char response[1024];
     Entry *entry = store_getEntry(req->args[0]);
     if(entry == NULL){
         send(client_fd, "+none\r\n", 7, 0);
@@ -345,23 +341,19 @@ void handle_type(RespRequest *req, int client_fd, int isQueued){
     }
 }
 
-/**/
 void handle_unknown(RespRequest *req, int client_fd){
     //TODO: create logic for unknown cmd
 }
 
 void printRequest(RespRequest *req){
     printf("PRINTING REQUESTTT\n");
-     printf("command: %d\n", req->command);
+    printf("command: %d\n", req->command);
     printf("argc: %d\n", req->argc);
     for(int i = 0; i < req->argc; i++){
         printf("Args: %s\n", req->args[i]);
     }
 }
 
-/**Returns a the string of the given string with all upper case letter
- * 
- */
 char* to_upper(char *stringToUpper){
     char *newString = malloc(strlen(stringToUpper) + 1);
     for(int i = 0; i < strlen(stringToUpper); i++){
@@ -370,10 +362,8 @@ char* to_upper(char *stringToUpper){
     return newString;
 }
 
-/**Checks if XREAD command contains multiple streams */
 int is_multiple_key(RespRequest *req, int *streamsLength, int *streamIndex){
     int index = 0;
-    char **contents = NULL;
     while(strcmp(to_upper(req->args[index]), "STREAMS") != 0){
         index++;
     }
@@ -383,15 +373,9 @@ int is_multiple_key(RespRequest *req, int *streamsLength, int *streamIndex){
         *streamsLength = (req->argc - index - 1)/2;
         return 0;
     }
-    //return ((req->argc - index + 1) % 2 != 0 && index + 1 > 2); //1 ezogi 0 zogi
     return 1;
 }
 
-
-/**Checks if the specified request contains Block
- * 1 = false
- * 0 = true
- */
 int hasBlock(RespRequest *request, int *blockIndex){
     char *wordInUpper = NULL;
     for(int i = 0; i < request->argc; i++){
@@ -410,7 +394,6 @@ int hasBlock(RespRequest *request, int *blockIndex){
     return 1;
 }
 
-/**Checks for a dollar sign */
 int hasDollarSign(RespRequest *request, int *dollarIndex){
     for(int i = 0; i < request->argc; i++){
         printf("normal word: %s\n", request->args[i]);
@@ -424,9 +407,6 @@ int hasDollarSign(RespRequest *request, int *dollarIndex){
     return 1;
 }
 
-/**Handles response of single XREAD with dollar sign and block 
- * @return the correct id (if didnt find $ then given id otherwise last id in the stream)
-*/
 char* handle_block_dollar(RespRequest *req, char **temp_messages, int *count){
     printf("Called dollar\n");
     int dollarSignIndex = 0;
@@ -444,14 +424,10 @@ char* handle_block_dollar(RespRequest *req, char **temp_messages, int *count){
             printf("temp mess: THE ENTRY IS REAL %s\n", *temp_messages);
             return strdup(streamEntry->id);
         }
-        
     }
     return strdup(req->args[4]);
 }
 
-/**Builds appropriate response for xread with multiple streams
- * 
- */
 void handle_multiple_xread(RespRequest *req, char **response, int streamIndex, int streamsLength){
     streamIndex++;
     char **keyArray = malloc(streamsLength/2 * sizeof(char*)),
@@ -472,12 +448,7 @@ void handle_multiple_xread(RespRequest *req, char **response, int streamIndex, i
     *response = streamEntry_XREAD_Mul_toString(streamsLength, keyArray, idArray);
 }
 
-/**Handles single xread cmd (with or without block keyword)
- * False = 1
- * True = 0
- */
 int handle_single_xread(RespRequest *req, Client *client, int *count, char **response){
-    //TODO: refactor this code change it to couple functions
     Entry *entry = NULL;
     char *temp_messages = NULL;
     int blockIndex = 0;
@@ -491,7 +462,6 @@ int handle_single_xread(RespRequest *req, Client *client, int *count, char **res
         int ms = atoi(req->args[blockIndex + 1]);
         client->timeout_at = (ms == 0) ? 0 : get_current_time_ms() + ms;        
         client->min_id = handle_block_dollar(req, &temp_messages, count);
-
 
         printf("Temp MESSAGES: %s\n", temp_messages);
         if (temp_messages != NULL && strcmp(temp_messages, "") != 0 && *count > 0) {
@@ -509,24 +479,9 @@ int handle_single_xread(RespRequest *req, Client *client, int *count, char **res
 
         if(temp_messages) free(temp_messages);
 
-
-
-        // entry = store_getEntry(req->args[3]);
-        // if(entry == NULL){
-        //     printf("Entry wasnt FOUND in block\n");
-        //     //send(client->fd, "*0\r\n", 4, 0);
-        //     printf("min_id in single: %s\n", client->min_id);
-        //     return 1;
-        // }
         printf("entry is not null\n");
-
-
-        
-
-        
         printf("Entered block on single xread");
         return 1;
-        
     }
     else{
         printf("Everything is broken: %s\n", req->args[1]);
@@ -539,7 +494,6 @@ int handle_single_xread(RespRequest *req, Client *client, int *count, char **res
         printf("entry is not null\n");
 
         temp_messages = streamEntry_XREAD_toString(req->args[2], "+", req->args[1], count);
-        
 
         if (*count == 0 || temp_messages == NULL) {
             send(client->fd, "*0\r\n", 4, 0);
@@ -548,15 +502,11 @@ int handle_single_xread(RespRequest *req, Client *client, int *count, char **res
         }
     }
     
-    
     *response = wrapXreadResponse(req->args[1], temp_messages, *count);
     free(temp_messages);   
     return 0;
 }
 
-/**Build client if found a block
- * @return 1 if failed or 0 if succeed
- */
 int build_client(Client *client, RespRequest *req, int *blockIndex, int *count, char **response){
     if(hasBlock(req, blockIndex) == 0 && *count == 0){
         int ms_timeout = atoi(req->args[*blockIndex + 1]);
@@ -575,16 +525,11 @@ int build_client(Client *client, RespRequest *req, int *blockIndex, int *count, 
         printf("Entered block on multiple  xread");
         if(response) free(response);
         return 1;
-        
     }
     return 0;
 }
 
-/**Handles Xread cmd (single and multiple)
- * @return 0 if worked 1 if didnt
- */
 int handle_xread(RespRequest *req, Client *client, char **response, int *count){
-    //TODO: put the Block search here and give it as a ptr to these funcs (if no block ptr will be null and need to be free)
     int blockIndex = 0;
     int streamsLength = 0;
     int streamIndex = 0;
@@ -634,7 +579,7 @@ void handle_stream_print(RespRequest *req, Client *client, REDIS_CMDS cmd){
     }
     printf("response length: %lu\n", strlen(response));
     printf("outside null\n");
-    int test = send(client->fd, response, strlen(response), 0);
+    send(client->fd, response, strlen(response), 0);
     free(response);
 }
 
@@ -649,13 +594,11 @@ int handle(RespRequest *req, Client *client) {
     printf("Entered Handle on this request: \n");
     printRequest(req);
 
-
     printf("\n--- Entered Handler: Command ID %d ---\n", req->command);
 
     // Transaction cmds
     if(req->command == MULTI){
         handle_multi(req, client);
-        //client->is_queued = 1;
         return 0;
     }
     if(req->command == EXEC){
@@ -672,21 +615,20 @@ int handle(RespRequest *req, Client *client) {
     if(client->is_queued){
         client->requests[client->queuedCommands] = copy_request(req);
         client->queuedCommands++;
-        
         printf("Command is QUEUED for fd %d\n", client->fd);
         send(client->fd, "+QUEUED\r\n", 9, 0);
         return 0;
     }
 
-
     printf("Is queued after multi: %d", client->is_queued);
+
     // Utility cmds
     if (req->command == ECHO) {
         handle_echo(req, client->fd);
         return 0;
     }
     if (req->command == PING) {
-        if (client->fd != server_config.master_fd) {
+        if (!from_master(client)) {
             handle_ping(client->fd);
         }
         return 0; 
@@ -700,24 +642,21 @@ int handle(RespRequest *req, Client *client) {
             send(client->fd, "+OK\r\n", 5, 0);
             return 0; 
         }
-        
         toUpper(req->args[0]);
-    
-        if (strcmp(req->args[0], "GETACK") == 0 && client->fd == server_config.master_fd) {
+        if (strcmp(req->args[0], "GETACK") == 0 && from_master(client)) {
             replconf_handle_getack();
         } else if (strcmp(req->args[0], "ACK") == 0) {
             replconf_handle_ack(req, client);
         } else {
             send(client->fd, "+OK\r\n", 5, 0);
         }
-        
         return 0;
     }
     if (req->command == PSYNC) {
         char replId[1024];
         snprintf(replId, sizeof(replId), "+FULLRESYNC %s %lld\r\n", 
-         server_config.master_replid, 
-         server_config.master_repl_offset);
+            server_config.master_replid, 
+            server_config.master_repl_offset);
         send(client->fd, replId, strlen(replId), 0);
 
         unsigned char empty_rdb[] = {
@@ -729,7 +668,6 @@ int handle(RespRequest *req, Client *client) {
         char header[32];
         int header_len = snprintf(header, sizeof(header), "$%zu\r\n", sizeof(empty_rdb));
         send(client->fd, header, header_len, 0);
-
         send(client->fd, empty_rdb, sizeof(empty_rdb), 0);
 
         client->is_replica = 1;
@@ -752,19 +690,15 @@ int handle(RespRequest *req, Client *client) {
         return 0; 
     }
     if (req->command == DEL) {
-        // handle_del(req, client_fd);
         return 0; 
     }
     if (req->command == EXISTS) {
-        // handle_exists(req, client_fd);
         return 0; 
     }
     if (req->command == EXPIRE) {
-        // handle_expire(req, client_fd);
         return 0; 
     }
     if (req->command == TTL) {
-        // handle_ttl(req, client_fd);
         return 0;
     }
     if (req->command == TYPE) {
@@ -819,19 +753,10 @@ int handle(RespRequest *req, Client *client) {
         handle_stream_print(req, client, XRANGE);
         return 0;
     }
-    if (req->command == XGROUP)    { return 0; }
+    if (req->command == XGROUP) { return 0; }
         
-    
     // Default: UNKNOWN
     printf("Unknown command received\n");
     send(client->fd, "-ERR unknown command\r\n", 22, 0);
     return 1;
 }
-
-
-
-
-
-
-
-
