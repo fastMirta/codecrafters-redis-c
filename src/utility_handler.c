@@ -73,7 +73,7 @@ void handle_psync(char *replicationId, int offset){
 void replconf_handle_getack() {
     char buf[128];
     char offsetStr[32];
-    int offsetLen = snprintf(offsetStr, sizeof(offsetStr), "%lld", server_config.master_repl_offset);
+    int offsetLen = snprintf(offsetStr, sizeof(offsetStr), "%lld", server_config.slave_repl_offset);
 
     int len = snprintf(buf, sizeof(buf),
         "*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$%d\r\n%s\r\n",

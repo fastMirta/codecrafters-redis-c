@@ -372,10 +372,17 @@ int main(int argc, char *argv[]) {
                         continue;
                     }
 
+                    // byte length of this RESP message
+                    int cmd_byte_len = ptr - before;
+
                     handle(&request, clients[i]);
 
                     // Only propagate to replicas if this came from a real client, not from master
-                    if (clients[i]->fd != server_config.master_fd) {
+                    if (clients[i]->fd == server_config.master_fd) {
+                        // came from master, updates slave offset
+                        server_config.slave_repl_offset += cmd_byte_len;
+                    } else {
+                        // came from real client, propagate to replicas
                         pass_data_toReplica(&request);
                     }
 
