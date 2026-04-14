@@ -675,6 +675,7 @@ int handle(RespRequest *req, Client *client) {
     }
     if(req->command == WAIT){
         handle_wait(req, client->fd);
+        return 0;
     }
     if (req->command == AUTH || req->command == SELECT || req->command == COMMAND) {
         send(client->fd, "+OK\r\n", 5, 0);
@@ -759,6 +760,7 @@ int handle(RespRequest *req, Client *client) {
     if (req->command == XGROUP) { return 0; }
         
     // Default: UNKNOWN
+    printf("Data: %s", req->args[0]);
     printf("Unknown command received\n");
     send(client->fd, "-ERR unknown command\r\n", 22, 0);
     return 1;
