@@ -339,6 +339,7 @@ int main(int argc, char *argv[]) {
                 for (int i = 1; i < active_fds; i++) {
                     if (clients[i] && clients[i]->fd == server_config.wait_client_fd)
                         clients[i]->is_blocked = 0;
+                        clients[i]->is_waiting = 0;
                 }
                 server_config.wait_client_fd = -1;
             }
