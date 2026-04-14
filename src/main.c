@@ -414,12 +414,16 @@ int main(int argc, char *argv[]) {
                     int cmd_byte_len = ptr - before;
 
                     handle(&request, clients[i]);
-                    server_config.master_repl_offset += cmd_byte_len;
+                    
                     // Only propagate to replicas if this came from a real client, not from master
                     if (clients[i]->fd == server_config.master_fd) {
                         // came from master, updates slave offset
                         server_config.slave_repl_offset += cmd_byte_len;
                     } else {
+                        
+                        if (isWriteCmd(request.command) == 0) {
+                            server_config.master_repl_offset += cmd_byte_len;
+                        }
                         // came from real client, propagate to replicas
                         pass_data_toReplica(&request);
                     }
