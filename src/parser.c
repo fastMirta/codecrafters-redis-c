@@ -100,12 +100,13 @@ REDIS_CMDS findRedisCmd(char *cmdName) {
     if (cmdName == NULL) return UNKNOWN;
     
     toUpper(cmdName);
-
+    printf("cmdName: %s\n", cmdName);
     // Utility cmds
     if (strcmp(cmdName, "ECHO") == 0) return ECHO;
     if (strcmp(cmdName, "PING") == 0) return PING;
     if (strcmp(cmdName, "INFO") == 0) return INFO;
     if (strcmp(cmdName, "REPLCONF") == 0) return REPLCONF;
+    if (strcmp(cmdName, "WAIT") == 0)   return WAIT;
     if (strcmp(cmdName, "PSYNC") == 0) return PSYNC;
     if (strcmp(cmdName, "AUTH") == 0) return AUTH;
     if (strcmp(cmdName, "SELECT") == 0) return SELECT;

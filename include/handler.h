@@ -30,9 +30,12 @@ typedef struct {
     char *master_replid; 
     long long master_repl_offset;
     long long slave_repl_offset;
+    long long captured_master_offset;
     char *master_host;
     int master_port;
     int master_fd;
+    int wantedReplicas;
+    int wait_client_fd;
 
 } RedisConfig;
 

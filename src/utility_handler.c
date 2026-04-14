@@ -91,6 +91,51 @@ void replconf_handle_ack(RespRequest *request, Client *client) {
     printf("Replica fd=%d acknowledged offset %lld\n", client->fd, client->repl_offset);
 }
 
+void handle_wait(RespRequest *req, int client_fd) {
+    printf("Called wait");
+    server_config.captured_master_offset = server_config.master_repl_offset;
+    int wantedReplicas = atoi(req->args[0]);
+    long long ms = atoll(req->args[1]);
+    server_config.wantedReplicas = wantedReplicas;
+
+    // Count currently connected replicas that are caught up to date with master server
+    int count = 0;
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i] && clients[i]->is_replica &&
+                clients[i]->repl_offset >= server_config.captured_master_offset)
+            count++;
+    }
+
+    if (count >= wantedReplicas) {
+        char reply[32];
+        int len = snprintf(reply, sizeof(reply), ":%d\r\n", count);
+        send(client_fd, reply, len, 0);
+        return;
+    }
+
+
+    server_config.wait_client_fd = client_fd;
+    server_config.wantedReplicas = wantedReplicas;
+
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i] && clients[i]->is_replica) {
+            char buf[128];
+            int len = snprintf(buf, sizeof(buf), "*3\r\n$8\r\nREPLCONF\r\n$6\r\nGETACK\r\n$1\r\n*\r\n");
+            send(clients[i]->fd, buf, len, 0);
+        }
+    }
+
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i] && clients[i]->fd == client_fd) {
+            clients[i]->is_blocked = 1;
+            clients[i]->timeout_at = (ms == 0) ? 0 : get_current_time_ms() + ms;
+            break;
+        }
+    }
+}
+
+
+
 void handle_handshake(){
     
 }

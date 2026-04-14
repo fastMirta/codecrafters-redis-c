@@ -673,6 +673,9 @@ int handle(RespRequest *req, Client *client) {
         client->is_replica = 1;
         return 0; 
     }
+    if(req->command == WAIT){
+        handle_wait(req, client->fd);
+    }
     if (req->command == AUTH || req->command == SELECT || req->command == COMMAND) {
         send(client->fd, "+OK\r\n", 5, 0);
         return 0; 

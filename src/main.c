@@ -123,6 +123,7 @@ const char* cmd_to_string(REDIS_CMDS cmd) {
         case PING:     return "PING";
         case INFO:     return "INFO";
         case REPLCONF: return "REPLCONF";
+        case WAIT:     return "WAIT";
         case PSYNC:    return "PSYNC";
         case AUTH:     return "AUTH";
         case SELECT:   return "SELECT";
@@ -293,17 +294,52 @@ int main(int argc, char *argv[]) {
         printf("Added master_fd to watch list\n");
     }
 
+    server_config.wait_client_fd = -1;
     while(1) {
         int poll_count = poll(watch_list, active_fds, 100);
 
         long long now = get_current_time_ms();
 
+
+        // Handle blocked client timeouts (XREAD)
         for (int i = 1; i < active_fds; i++) {
             if (clients[i] && clients[i]->is_blocked
                     && clients[i]->timeout_at != 0
-                    && now >= clients[i]->timeout_at) {
+                    && now >= clients[i]->timeout_at
+                    && !clients[i]->is_replica) {
+                        printf("Entered timeout of xread");
                 send(watch_list[i].fd, "*-1\r\n", 5, 0);
                 clients[i]->is_blocked = 0;
+            }
+        }
+
+        // Handle WAIT
+        if (server_config.wait_client_fd != -1) {
+            int count = 0;
+            int timed_out = 0;
+            printf("Entered wait timeout");
+            for (int i = 0; i < MAX_CLIENTS; i++) {
+                if (clients[i] && clients[i]->is_replica &&
+                        clients[i]->repl_offset >= server_config.captured_master_offset)
+                    count++;
+            }
+
+            for (int i = 1; i < active_fds; i++) {
+                if (clients[i] && clients[i]->fd == server_config.wait_client_fd &&
+                        clients[i]->timeout_at != 0 && now >= clients[i]->timeout_at)
+                    timed_out = 1;
+            }
+
+            if (count >= server_config.wantedReplicas || timed_out) {
+                char reply[32];
+                int len = snprintf(reply, sizeof(reply), ":%d\r\n", count);
+                send(server_config.wait_client_fd, reply, len, 0);
+
+                for (int i = 1; i < active_fds; i++) {
+                    if (clients[i] && clients[i]->fd == server_config.wait_client_fd)
+                        clients[i]->is_blocked = 0;
+                }
+                server_config.wait_client_fd = -1;
             }
         }
 

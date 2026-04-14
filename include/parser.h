@@ -12,6 +12,7 @@ typedef enum {
     PING,
     INFO,
     REPLCONF,
+    WAIT,
     PSYNC,
     AUTH,
     SELECT,
