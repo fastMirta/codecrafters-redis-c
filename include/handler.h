@@ -16,6 +16,7 @@ typedef struct Client {
     int is_blocked;
     int is_queued;
     int is_replica;
+    int is_waiting;
     long long repl_offset;
     long long timeout_at;
     char *waiting_for_key;

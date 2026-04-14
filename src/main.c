@@ -306,7 +306,8 @@ int main(int argc, char *argv[]) {
             if (clients[i] && clients[i]->is_blocked
                     && clients[i]->timeout_at != 0
                     && now >= clients[i]->timeout_at
-                    && !clients[i]->is_replica) {
+                    && !clients[i]->is_replica
+                    && !clients[i]->is_waiting) {
                         printf("Entered timeout of xread");
                 send(watch_list[i].fd, "*-1\r\n", 5, 0);
                 clients[i]->is_blocked = 0;

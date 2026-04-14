@@ -119,6 +119,7 @@ void handle_wait(RespRequest *req, int client_fd) {
 
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (clients[i] && clients[i]->is_replica) {
+            clients[i]->is_waiting = 1;
             char buf[128];
             int len = snprintf(buf, sizeof(buf), "*3\r\n$8\r\nREPLCONF\r\n$6\r\nGETACK\r\n$1\r\n*\r\n");
             send(clients[i]->fd, buf, len, 0);
