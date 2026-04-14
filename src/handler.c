@@ -13,6 +13,8 @@
 extern Client *clients[MAX_CLIENTS];
 
 static inline int from_master(Client *client) {
+    printf("client fd: %d\n", client->fd);
+    printf("server fd: %d\n", server_config.master_fd);
     return client->fd == server_config.master_fd;
 }
 
@@ -638,6 +640,7 @@ int handle(RespRequest *req, Client *client) {
         return 0; 
     }
     if (req->command == REPLCONF) {
+        printf("req->args[0]: %s\n", req->args[0]);
         if(req->argc < 1){
             send(client->fd, "+OK\r\n", 5, 0);
             return 0; 

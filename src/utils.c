@@ -7,8 +7,10 @@ Entry *table[TABLE_SIZE] = {NULL};
 
 /**Changes all the characters of a given string to upper case */
 void toUpper(char *str){
+    printf("B4 str is to upper: %s\n", str);
 	for (int i = 0; str[i]; i++)
 		str[i] = toupper((unsigned char)str[i]);
+    printf("after str is to upper: %s\n", str);
 }
 
 

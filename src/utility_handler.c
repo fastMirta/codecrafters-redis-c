@@ -80,6 +80,7 @@ void replconf_handle_getack() {
         offsetLen, offsetStr);
 
     send(server_config.master_fd, buf, len, 0);
+    printf("send buffer: %s\n", buf);
 }
 
 void replconf_handle_ack(RespRequest *request, Client *client) {
