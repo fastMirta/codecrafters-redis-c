@@ -24,6 +24,8 @@ int parse(char **client_input, RespRequest *request){
     *client_input = *client_input + strlen(firstLine) + 2;
     free(firstLine);
 
+    int isConfig = 0;
+
     for(int i = 0; i < loopLen; i++){
         printf("client input: %s\n", *client_input);
         char *lenLine = getLine(*client_input);
@@ -45,12 +47,23 @@ int parse(char **client_input, RespRequest *request){
         }
 
         if(i == 0){
-            request->command = findRedisCmd(valueLine);
+            toUpper(valueLine);
+            if(strcmp(valueLine, "CONFIG") == 0){
+                isConfig = 1;
+            } else {
+                request->command = findRedisCmd(valueLine);
+            }
             free(valueLine);
+        } else if(i == 1 && isConfig){
+            toUpper(valueLine);
+            request->command = findConfigCmd(valueLine);
+            free(valueLine);
+            request->argc = loopLen - 2; 
         } else {
-            request->args[i-1] = strdup(valueLine);
+            request->args[isConfig ? i - 2 : i - 1] = strdup(valueLine);
             free(valueLine);
         }
+
         *client_input = *client_input + expectedLen + 2;
     }
 
@@ -159,5 +172,14 @@ REDIS_CMDS findRedisCmd(char *cmdName) {
     if (strcmp(cmdName, "XRANGE") == 0) return XRANGE;
     if (strcmp(cmdName, "XGROUP") == 0) return XGROUP;
 
+    return UNKNOWN;
+}
+
+
+REDIS_CMDS findConfigCmd(char *subCmd){
+    toUpper(subCmd);
+    if(strcmp(subCmd, "GET") == 0)     return CONFIG_GET;
+    // if(strcmp(subCmd, "SET") == 0)     return CONFIG_SET;
+    // if(strcmp(subCmd, "REWRITE") == 0) return CONFIG_REWRITE;
     return UNKNOWN;
 }

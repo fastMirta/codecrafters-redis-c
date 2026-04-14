@@ -16,6 +16,7 @@ void toUpper(char *str){
 
 int hash(char *key) {
     int hash = 0;
+    printf("key: %s\n", key);
     while (*key)
         hash = (hash * 31 + *key++) % TABLE_SIZE;
     return hash;
@@ -96,6 +97,7 @@ void store_set(char *key, void *value, TIME_FLAGS flag, int seconds, RedisType t
 
 
 char *store_get(char *key) {
+    printf("Key in store: %s\n", key);
     int index = hash(key);
     Entry *entry = table[index];
     while (entry != NULL) {

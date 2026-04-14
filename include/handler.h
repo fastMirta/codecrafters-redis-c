@@ -37,6 +37,8 @@ typedef struct {
     int master_fd;
     int wantedReplicas;
     int wait_client_fd;
+    char *rdb_directory;
+    char *rdb_name;
 
 } RedisConfig;
 

@@ -18,6 +18,9 @@ typedef enum {
     SELECT,
     COMMAND,
 
+    //RDB cmds
+    CONFIG_GET,
+
     // Core cmds 
     SET,
     GET,
@@ -75,6 +78,7 @@ typedef struct {
 } RespRequest;
 
 REDIS_CMDS findRedisCmd(char *cmdName);
+REDIS_CMDS findConfigCmd(char *cmdName);
 int parse(char **client_input, RespRequest *request);
 char* getLine(char *client_input);
 int getPrefix(char line[], char *prefix);

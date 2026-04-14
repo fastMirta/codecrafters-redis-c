@@ -7,6 +7,7 @@
 #include "utility_handler.h"
 #include "parser.h"
 #include "utils.h"
+#include "rdb_handler.h"
 
 
 
@@ -317,6 +318,7 @@ void handle_set(RespRequest *req, RedisType type, int client_fd, int isQueued){
 
 void handle_get(RespRequest *req, int client_fd) {
     char response[1024];
+    printf("req->args[0] in handle get: %s\n", req->args[0]);
     char *value = store_get(req->args[0]); 
     if (value == NULL) {
         send(client_fd, "$-1\r\n", 5, 0);  
@@ -683,6 +685,13 @@ int handle(RespRequest *req, Client *client) {
     if (req->command == AUTH || req->command == SELECT || req->command == COMMAND) {
         send(client->fd, "+OK\r\n", 5, 0);
         return 0; 
+    }
+
+    //rdb cmds
+    if(req->command == CONFIG_GET){
+        printf("Config get handler!!\n");
+        handle_config(req, client->fd);
+        return 0;
     }
 
     // Core cmds

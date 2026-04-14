@@ -99,6 +99,19 @@ void replicaofHandler(int argc, char *argv[]) {
 
 }
 
+void rdb_config_handler(int argc, char *argv[]){
+    for (int i = 0; i < argc; i++) {
+        if(argv[i] && strcmp(argv[i], "--dir") == 0 && i + 1 < argc){
+            strcpy(server_config.rdb_directory, argv[i + 1]);
+        }
+
+        if(strcmp(argv[i], "--dbfilename") == 0 && i + 1 < argc){
+            strcpy(server_config.rdb_name, argv[i + 1]);
+        }
+    }
+    printf("found both?: name: %s, path: %s\n", server_config.rdb_name, server_config.rdb_directory);
+}
+
 int validate_server_response(int stepLevel, char *serversResponse){
     printf("%s\n", serversResponse);
     printf("step: %d\n", stepLevel);
@@ -250,6 +263,8 @@ int main(int argc, char *argv[]) {
     server_config.master_replid = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb";
     server_config.master_repl_offset = 0;
     server_config.master_fd = -1;
+    server_config.rdb_directory = strdup("");
+    server_config.rdb_name = strdup("");
 
     listen(server_fd, 5);
 
@@ -261,6 +276,7 @@ int main(int argc, char *argv[]) {
     int active_fds = 1;
 
     replicaofHandler(argc, argv);
+    rdb_config_handler(argc, argv);
 
     // Does handshake only for slave
     if (strcmp(server_config.role, "slave") == 0) {
@@ -413,7 +429,8 @@ int main(int argc, char *argv[]) {
 
                     // byte length of this RESP message
                     int cmd_byte_len = ptr - before;
-
+                    printf("Printing request\n");
+                    printRequest(&request);
                     handle(&request, clients[i]);
                     
                     // Only propagate to replicas if this came from a real client, not from master
