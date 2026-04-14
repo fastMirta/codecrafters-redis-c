@@ -249,6 +249,7 @@ int main(int argc, char *argv[]) {
     server_config.port = port;
     server_config.master_replid = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb";
     server_config.master_repl_offset = 0;
+    server_config.master_fd = -1;
 
     listen(server_fd, 5);
 
@@ -373,7 +374,7 @@ int main(int argc, char *argv[]) {
                 continue;
             }
 
-            if (clients[i]->is_blocked) continue;
+            if (clients[i]->is_blocked && !clients[i]->is_replica) continue;
 
             char buffer[4096];
             int bytes_received = recv(watch_list[i].fd, buffer, sizeof(buffer) - 1, 0);
