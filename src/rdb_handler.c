@@ -325,7 +325,7 @@ int load_rdb_into_table(void) {
 
     fseek(f, 9, SEEK_SET);
 
-    long long expiry_ms = -1;  
+    long long expiry_ms = 0;  
     int loaded = 0;
 
     uint8_t op;
