@@ -101,6 +101,7 @@ void store_set(char *key, void *value, TIME_FLAGS flag, int seconds, RedisType t
 char *store_get(char *key) {
     printf("Key in store: %s\n", key);
     int index = hash(key);
+    printf("LOOKING at index: %d\n", index);
     Entry *entry = table[index];
     while (entry != NULL) {
         if (strcmp(entry->key, key) == 0) {

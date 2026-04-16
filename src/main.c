@@ -279,6 +279,7 @@ int main(int argc, char *argv[]) {
     replicaofHandler(argc, argv);
     rdb_config_handler(argc, argv);
     int keysLoaded = load_rdb_into_table();
+    printf("Keys loaded: %d\n", keysLoaded);
 
     // Does handshake only for slave
     if (strcmp(server_config.role, "slave") == 0) {

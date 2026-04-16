@@ -371,7 +371,9 @@ int load_rdb_into_table(void) {
         if (value_type == 0) {                  // ── STRING
             char *val = rdb_read_string(f);
             if (!val) { free(key); break; }
+            printf("RDB LOADED: key=%s val=%s\n", key, val);
             table_insert(key, val, TYPE_STRING, expiry_ms);
+            printf("INSERTED at index: %d\n", hash(key));
             loaded++;
 
         } else if (value_type == 19) {          // ── STREAM
