@@ -285,15 +285,11 @@ fail:
 }
 
 
-static unsigned int hash_key(const char *key) {
-    unsigned int h = 5381;
-    while (*key) h = ((h << 5) + h) ^ (unsigned char)*key++;
-    return h % TABLE_SIZE;
-}
+
 
 static void table_insert(const char *key, void *value,
                          RedisType type, long long expires_at) {
-    unsigned int idx = hash_key(key);
+    unsigned int idx = hash((char*)key);
 
     for (Entry *e = table[idx]; e; e = e->next) {
         if (strcmp(e->key, key) == 0) {
