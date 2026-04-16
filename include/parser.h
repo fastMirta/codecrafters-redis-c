@@ -20,6 +20,7 @@ typedef enum {
 
     //RDB cmds
     CONFIG_GET,
+    KEYS,
 
     // Core cmds 
     SET,

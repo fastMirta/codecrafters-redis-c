@@ -56,6 +56,8 @@ void store_set_stream(char *key, Stream *stream){
 
 }
 
+
+
 void store_set(char *key, void *value, TIME_FLAGS flag, int seconds, RedisType type) {
     int index = hash(key);
     

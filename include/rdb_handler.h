@@ -8,5 +8,6 @@
 
 
 void handle_config(RespRequest *req, int client_fd);
+void handle_key(RespRequest *req, int client_fd);
 
 #endif

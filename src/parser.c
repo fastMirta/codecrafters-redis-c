@@ -121,6 +121,7 @@ REDIS_CMDS findRedisCmd(char *cmdName) {
     if (strcmp(cmdName, "REPLCONF") == 0) return REPLCONF;
     if (strcmp(cmdName, "WAIT") == 0)   return WAIT;
     if (strcmp(cmdName, "PSYNC") == 0) return PSYNC;
+    if (strcmp(cmdName, "KEYS") == 0) return KEYS;
     if (strcmp(cmdName, "AUTH") == 0) return AUTH;
     if (strcmp(cmdName, "SELECT") == 0) return SELECT;
     if (strcmp(cmdName, "COMMAND") == 0) return COMMAND;

@@ -682,6 +682,10 @@ int handle(RespRequest *req, Client *client) {
         handle_wait(req, client->fd);
         return 0;
     }
+    if(req->command == KEYS){
+        handle_key(req, client->fd);
+        return 0;
+    }
     if (req->command == AUTH || req->command == SELECT || req->command == COMMAND) {
         send(client->fd, "+OK\r\n", 5, 0);
         return 0; 
