@@ -139,3 +139,260 @@ void handle_key(RespRequest *req, int client_fd){
     send(client_fd, resp, offset, 0);
 }
 
+
+
+
+// Read a length-encoded integer from RDB, return -1 on error.
+// Sets *is_encoded if it's a special int-encoded string.
+static int rdb_read_length(FILE *f, int *is_encoded) {
+    if (is_encoded) *is_encoded = 0;
+    uint8_t byte;
+    if (fread(&byte, 1, 1, f) != 1) return -1;
+
+    uint8_t enc = (byte & 0xC0) >> 6;
+
+    if (enc == 0) return byte & 0x3F;           // 6-bit length
+
+    if (enc == 1) {                              // 14-bit length
+        uint8_t next;
+        if (fread(&next, 1, 1, f) != 1) return -1;
+        return ((byte & 0x3F) << 8) | next;
+    }
+
+    if (enc == 2) {                              // 32-bit length (big-endian)
+        uint8_t buf[4];
+        if (fread(buf, 1, 4, f) != 4) return -1;
+        return (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
+    }
+
+    if (is_encoded) *is_encoded = 1;
+    return byte & 0x3F;  // 0=int8, 1=int16, 2=int32
+}
+
+// Read a length-prefixed string, returns heap-allocated string or NULL.
+static char *rdb_read_string(FILE *f) {
+    int is_encoded;
+    int len = rdb_read_length(f, &is_encoded);
+    if (len < 0) return NULL;
+
+    if (is_encoded) {
+        int nbytes = (len == 0) ? 1 : (len == 1) ? 2 : 4;
+        int32_t val = 0;
+        if (fread(&val, 1, nbytes, f) != (size_t)nbytes) return NULL;
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%d", val);
+        return strdup(buf);
+    }
+
+    char *s = malloc(len + 1);
+    if (!s) return NULL;
+    if (len > 0 && fread(s, 1, len, f) != (size_t)len) { free(s); return NULL; }
+    s[len] = '\0';
+    return s;
+}
+
+// Skip a full RDB value by type without storing it.
+static int rdb_skip_value(FILE *f, uint8_t type) {
+    if (type == 0) { free(rdb_read_string(f)); return 0; }  // string
+    return -1;
+}
+
+
+
+static Stream *rdb_read_stream(FILE *f) {
+    Stream *stream = calloc(1, sizeof(Stream));
+    if (!stream) return NULL;
+
+    // Number of listpack entries (each listpack = one stream entry group)
+    int lp_count = rdb_read_length(f, NULL);
+    if (lp_count < 0) { free(stream); return NULL; }
+
+    for (int i = 0; i < lp_count; i++) {
+        // Each item is a raw listpack blob — read and parse it
+        int is_enc;
+        int blob_len = rdb_read_length(f, &is_enc);
+        if (blob_len < 0) goto fail;
+
+        uint8_t *blob = malloc(blob_len);
+        if (!blob || fread(blob, 1, blob_len, f) != (size_t)blob_len) {
+            free(blob); goto fail;
+        }
+
+        // Minimal listpack parser:
+        // listpack layout: <total-bytes:4><num-elements:2><entries...><0xFF>
+        uint8_t *p   = blob + 6;   // skip header
+        uint8_t *end = blob + blob_len - 1;
+
+        while (p < end && *p != 0xFF) {
+            // Each entry: <encoding+data><backlen>
+            uint8_t enc = *p;
+            int64_t ival = 0;
+            char   *sval = NULL;
+            int     slen = 0;
+
+            if ((enc & 0x80) == 0) {           // 7-bit uint
+                ival = enc & 0x7F; p += 2;
+            } else if ((enc & 0xE0) == 0x60) { // 13-bit int
+                ival = ((enc & 0x1F) << 8) | p[1]; p += 3;
+            } else if ((enc & 0xC0) == 0x80) { // 6-bit string
+                slen = enc & 0x3F; sval = (char *)p + 1;
+                p += 1 + slen + 1;             // enc + data + backlen
+            } else if ((enc & 0xFF) == 0xF1) { // 16-bit int
+                ival = (int16_t)(p[1] | (p[2] << 8)); p += 4;
+            } else if ((enc & 0xFF) == 0xF2) { // 24-bit int
+                ival = p[1] | (p[2] << 8) | (p[3] << 16); p += 5;
+            } else if ((enc & 0xFF) == 0xF3) { // 32-bit int
+                ival = (int32_t)(p[1] | (p[2]<<8) | (p[3]<<16) | (p[4]<<24));
+                p += 6;
+            } else if ((enc & 0xFF) == 0xF4) { // 64-bit int
+                memcpy(&ival, p + 1, 8); p += 10;
+            } else {
+                // Unknown encoding — stop parsing this blob safely
+                break;
+            }
+
+            // Build a stream entry from id + field/value pairs
+            // First string entry in a listpack is the stream ID
+            StreamEntry *se = calloc(1, sizeof(StreamEntry));
+            if (!se) { free(blob); goto fail; }
+
+            if (sval) {
+                char tmp[256];
+                snprintf(tmp, sizeof(tmp), "%.*s", slen, sval);
+                se->id = strdup(tmp);
+            } else {
+                char tmp[64];
+                snprintf(tmp, sizeof(tmp), "%lld", (long long)ival);
+                se->id = strdup(tmp);
+            }
+
+            se->next   = stream->head;
+            stream->head = se;
+            stream->length++;
+            free(blob);
+        }
+        free(blob);
+    }
+
+    // Skip remaining stream metadata (groups, PEL, consumers) — 3 length fields
+    for (int i = 0; i < 3; i++) rdb_read_length(f, NULL);
+    return stream;
+
+fail:
+    // TODO: free stream entries on failure
+    free(stream);
+    return NULL;
+}
+
+
+static unsigned int hash_key(const char *key) {
+    unsigned int h = 5381;
+    while (*key) h = ((h << 5) + h) ^ (unsigned char)*key++;
+    return h % TABLE_SIZE;
+}
+
+static void table_insert(const char *key, void *value,
+                         RedisType type, long long expires_at) {
+    unsigned int idx = hash_key(key);
+
+    for (Entry *e = table[idx]; e; e = e->next) {
+        if (strcmp(e->key, key) == 0) {
+            e->value      = value;
+            e->type       = type;
+            e->expires_at = expires_at;
+            return;
+        }
+    }
+
+    Entry *e = malloc(sizeof(Entry));
+    if (!e) return;
+    e->key        = strdup(key);
+    e->value      = value;
+    e->type       = type;
+    e->expires_at = expires_at;
+    e->next       = table[idx];
+    table[idx]    = e;
+}
+
+
+int load_rdb_into_table(void) {
+    char full_path[1024];
+    snprintf(full_path, sizeof(full_path), "%s/%s",
+             server_config.rdb_directory, server_config.rdb_name);
+
+    FILE *f = fopen(full_path, "rb");
+    if (!f) return -1;
+
+    fseek(f, 9, SEEK_SET);
+
+    long long expiry_ms = -1;  
+    int loaded = 0;
+
+    uint8_t op;
+    while (fread(&op, 1, 1, f) == 1) {
+
+        if (op == 0xFF) break;  // end of file marker
+
+        // ── metadata / structural opcodes ─────────────────────────────────
+        if (op == 0xFA) {       // auxiliary field — skip key + value
+            free(rdb_read_string(f));
+            free(rdb_read_string(f));
+            continue;
+        }
+        if (op == 0xFE) {       // DB select
+            rdb_read_length(f, NULL);
+            expiry_ms = -1;
+            continue;
+        }
+        if (op == 0xFB) {       // resize DB — two lengths (hash size, expire size)
+            rdb_read_length(f, NULL);
+            rdb_read_length(f, NULL);
+            continue;
+        }
+
+        // ── expiry opcodes ─────────────────────────────────────────────────
+        if (op == 0xFD) {       // expire time in seconds (4 bytes)
+            uint32_t secs;
+            fread(&secs, 4, 1, f);
+            expiry_ms = (long long)secs * 1000;
+            continue;
+        }
+        if (op == 0xFC) {       // expire time in milliseconds (8 bytes)
+            fread(&expiry_ms, 8, 1, f);
+            continue;
+        }
+
+
+        uint8_t value_type = op;
+
+        char *key = rdb_read_string(f);
+        if (!key) break;
+
+        if (value_type == 0) {                  // ── STRING
+            char *val = rdb_read_string(f);
+            if (!val) { free(key); break; }
+            table_insert(key, val, TYPE_STRING, expiry_ms);
+            loaded++;
+
+        } else if (value_type == 19) {          // ── STREAM
+            Stream *s = rdb_read_stream(f);
+            if (!s) { free(key); break; }
+            table_insert(key, s, TYPE_STRING, expiry_ms);
+            loaded++;
+
+        } else {
+            // Unknown/unsupported type — skip safely by bailing out.
+            // To add a new type: add an else-if above this block.
+            fprintf(stderr, "load_rdb: unsupported type 0x%02X for key '%s', stopping\n",
+                    value_type, key);
+            free(key);
+            break;
+        }
+
+        free(key);
+        expiry_ms = -1;  // reset after each key
+    }
+
+    fclose(f);
+    return loaded;  // number of keys loaded
+}

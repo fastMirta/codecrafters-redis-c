@@ -9,5 +9,6 @@
 
 void handle_config(RespRequest *req, int client_fd);
 void handle_key(RespRequest *req, int client_fd);
+int load_rdb_into_table(void);
 
 #endif
