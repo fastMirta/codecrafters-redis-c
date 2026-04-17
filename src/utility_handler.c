@@ -70,7 +70,7 @@ void handle_psync(char *replicationId, int offset){
     send(server_config.master_fd, psyncData, strlen(psyncData), 0);
 }
 
-void replconf_handle_getack() {
+void replconf_handle_getack(int client_fd) {
     char buf[128];
     char offsetStr[32];
     int offsetLen = snprintf(offsetStr, sizeof(offsetStr), "%lld", server_config.slave_repl_offset);
@@ -79,7 +79,7 @@ void replconf_handle_getack() {
         "*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$%d\r\n%s\r\n",
         offsetLen, offsetStr);
 
-    send(server_config.master_fd, buf, len, 0);
+    send(client_fd, buf, len, 0);
     printf("send buffer: %s\n", buf);
 }
 

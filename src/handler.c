@@ -649,7 +649,7 @@ int handle(RespRequest *req, Client *client) {
         }
         toUpper(req->args[0]);
         if (strcmp(req->args[0], "GETACK") == 0 && from_master(client)) {
-            replconf_handle_getack();
+            replconf_handle_getack(client->fd);
         } else if (strcmp(req->args[0], "ACK") == 0) {
             replconf_handle_ack(req, client);
         } else {
