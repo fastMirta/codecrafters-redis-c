@@ -304,54 +304,38 @@ int load_rdb_into_table(void) {
     uint8_t op;
     while (fread(&op, 1, 1, f) == 1) {
 
-        if (op == 0xFF) break;  // end of file marker
+        if (op == 0xFF) break;  // End of RDB
 
-        // ── metadata / structural opcodes ─────────────────────────────────
-        if (op == 0xFA) {       // auxiliary field — skip key + value
-            free(rdb_read_string(f));
-            free(rdb_read_string(f));
-            continue;
-        }
-        if (op == 0xFE) {       // DB select
-            rdb_read_length(f, NULL);
-            expiry_ms = -1;
-            continue;
-        }
-        if (op == 0xFB) {       // resize DB — two lengths (hash size, expire size)
-            rdb_read_length(f, NULL);
-            rdb_read_length(f, NULL);
-            continue;
-        }
+        if (op == 0xFA) { free(rdb_read_string(f)); free(rdb_read_string(f)); continue; }
+        if (op == 0xFE) { rdb_read_length(f, NULL); continue; }
+        if (op == 0xFB) { rdb_read_length(f, NULL); rdb_read_length(f, NULL); continue; }
 
-        // ── expiry opcodes ─────────────────────────────────────────────────
-        if (op == 0xFD) {       // expire time in seconds (4 bytes)
+        if (op == 0xFD) {
             uint32_t secs;
             fread(&secs, 4, 1, f);
             expiry_ms = (long long)secs * 1000;
-            continue;
-        }
-        if (op == 0xFC) {       // expire time in milliseconds (8 bytes)
+            if (fread(&op, 1, 1, f) != 1) break; 
+        } else if (op == 0xFC) {
             fread(&expiry_ms, 8, 1, f);
-            continue;
+            if (fread(&op, 1, 1, f) != 1) break;
         }
-
 
         uint8_t value_type = op;
-
         char *key = rdb_read_string(f);
         if (!key) break;
 
-        if (value_type == 0) {                  // ── STRING
+        if (value_type == 0) { // STRING
             char *val = rdb_read_string(f);
-            if (!val) { free(key); break; }
-            printf("RDB LOADED: key=%s val=%s\n", key, val);
-            store_set(key, val, NO_TIME_FLAG, -1, TYPE_STRING);
-            if (expiry_ms > 0) {
-                table[hash(key)]->expires_at = expiry_ms;
+            if (val) {
+                printf("RDB LOADED: key=%s val=%s\n", key, val);
+                store_set(key, val, NO_TIME_FLAG, -1, TYPE_STRING);
+                if (expiry_ms != -1) {
+                    Entry *e = table[hash(key)]; 
+                    if (e) e->expires_at = expiry_ms;
+                }
+                loaded++;
+                free(val);
             }
-            printf("INSERTED at index: %d\n", hash(key));
-            loaded++;
-
         } else if (value_type == 19) {          // ── STREAM
             Stream *stream = rdb_read_stream(f);
             if (!stream) { free(key); break; }
@@ -362,8 +346,7 @@ int load_rdb_into_table(void) {
             loaded++;
 
         } else {
-            // Unknown/unsupported type — skip safely by bailing out.
-            // To add a new type: add an else-if above this block.
+            // Unknown/unsupported type skip safely by bailing out.
             fprintf(stderr, "load_rdb: unsupported type 0x%02X for key '%s', stopping\n",
                     value_type, key);
             free(key);

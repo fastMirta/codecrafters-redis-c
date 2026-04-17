@@ -95,6 +95,8 @@ void store_set(char *key, void *value, TIME_FLAGS flag, int seconds, RedisType t
         else if (flag == PX)
             existing->expires_at = now + (long long)seconds;
     }
+
+    printf("Saved value: %s with key: %s\n", table[index]->key, table[index]->value);
 }
 
 
