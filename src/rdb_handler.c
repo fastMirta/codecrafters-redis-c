@@ -46,7 +46,7 @@ int read_rdb_file(char **keys, int max_keys){
 
     if(!rdb){return -1;}
 
-     int key_count = 0;
+    int key_count = 0;
     uint8_t byte;
 
     fseek(rdb, 9, SEEK_SET);
@@ -115,30 +115,28 @@ int read_rdb_file(char **keys, int max_keys){
 
 }
 
-void handle_key(RespRequest *req, int client_fd){
-   char *keys[256];
-    int count = read_rdb_file(keys, 256);
+void handle_key(RespRequest *req, int client_fd) {
+    char *keys[256];
+    int count = 0;
 
-    if (count < 0) {
-        send(client_fd, "*0\r\n", 4, 0);
-        return;
+    for (int i = 0; i < TABLE_SIZE; i++) {
+        Entry *entry = table[i];
+        while (entry != NULL) {
+            if (count < 256)
+                keys[count++] = entry->key;
+            entry = entry->next;
+        }
     }
 
     char resp[8192];
     int offset = 0;
-
-    offset += snprintf(resp + offset, sizeof(resp) - offset,
-                       "*%d\r\n", count);
-
+    offset += snprintf(resp + offset, sizeof(resp) - offset, "*%d\r\n", count);
     for (int i = 0; i < count; i++) {
         offset += snprintf(resp + offset, sizeof(resp) - offset,
-                           "$%zu\r\n%s\r\n", strlen(keys[i]), keys[i]);
-        free(keys[i]);
+            "$%zu\r\n%s\r\n", strlen(keys[i]), keys[i]);
     }
-
     send(client_fd, resp, offset, 0);
 }
-
 
 
 
