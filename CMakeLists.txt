@@ -12,6 +12,7 @@ set(SOURCE_FILES
     src/transaction_handler.c
     src/utility_handler.c
     src/rdb_handler.c
+    src/channels_handler.c
     
 )
 

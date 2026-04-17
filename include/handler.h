@@ -15,12 +15,14 @@ typedef struct Client {
     int fd;
     int is_blocked;
     int is_queued;
+    int is_subscribed;
     int is_replica;
     int is_waiting;
     long long repl_offset;
     long long timeout_at;
     char *waiting_for_key;
     char *min_id;
+    char *channel_subed;
     RespRequest *requests[MAX_QUEUED_CMDS];
     int queuedCommands;
 } Client;

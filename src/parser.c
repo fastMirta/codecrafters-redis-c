@@ -173,6 +173,9 @@ REDIS_CMDS findRedisCmd(char *cmdName) {
     if (strcmp(cmdName, "XRANGE") == 0) return XRANGE;
     if (strcmp(cmdName, "XGROUP") == 0) return XGROUP;
 
+    // Sub/Pub cmds 
+    if (strcmp(cmdName, "SUBSCRIBE") == 0) return SUBSCRIBE;
+
     return UNKNOWN;
 }
 

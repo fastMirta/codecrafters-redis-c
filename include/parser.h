@@ -70,6 +70,9 @@ typedef enum {
     XRANGE,
     XGROUP,
 
+    //pub/sub
+    SUBSCRIBE,
+
 } REDIS_CMDS;
 
 typedef struct {

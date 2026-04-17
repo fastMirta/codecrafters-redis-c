@@ -8,6 +8,7 @@
 #include "parser.h"
 #include "utils.h"
 #include "rdb_handler.h"
+#include "channels_handler.h"
 
 
 
@@ -774,6 +775,13 @@ int handle(RespRequest *req, Client *client) {
         return 0;
     }
     if (req->command == XGROUP) { return 0; }
+
+    //Sub/Pub cmds SUBSCRIBE
+    if (req->command == SUBSCRIBE){
+        printf("ENTERED Subscribe\n");
+        handle_subscribe(req, client);
+        return 0;
+    }
         
     // Default: UNKNOWN
     printf("Data: %s", req->args[0]);
