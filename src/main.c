@@ -264,8 +264,8 @@ int main(int argc, char *argv[]) {
     server_config.master_replid = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb";
     server_config.master_repl_offset = 0;
     server_config.master_fd = -1;
-    server_config.rdb_directory = strdup("");
-    server_config.rdb_name = strdup("");
+    server_config.rdb_directory[0] = '\0';
+    server_config.rdb_name[0] = '\0';
 
     listen(server_fd, 5);
 
