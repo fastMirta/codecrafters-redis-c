@@ -22,7 +22,7 @@ typedef struct Client {
     long long timeout_at;
     char *waiting_for_key;
     char *min_id;
-    char *channel_subed;
+    char *channel_subed[64];
     RespRequest *requests[MAX_QUEUED_CMDS];
     int queuedCommands;
 } Client;

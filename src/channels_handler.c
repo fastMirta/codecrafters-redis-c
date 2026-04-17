@@ -3,48 +3,49 @@
 
 
 void get_channels(RespRequest *req, char *buffer, int sizeOfBuffer){
+    printf("req->argc < 1? %d\n", req->argc < 1);
     if(req->argc < 1){return;}
-
+    printf("Start of cha cha cha channel\n");
     int offset = 0;
 
     for (int i = 0; i < req->argc; i++) {
-        int written = snprintf(buffer + offset, sizeof(buffer) - offset, 
+        int written = snprintf(buffer + offset, sizeOfBuffer - offset, 
                             "%s", req->args[i]);
         
-        if (written > 0 && offset + written < sizeof(buffer)) {
+        if (written > 0 && offset + written < sizeOfBuffer) {
             offset += written;
         }
         else {
             break;
         }
     }
+    printf("End of cha cha cha channel\n");
     
 }
 
 void handle_subscribe(RespRequest *req, Client *client){
     client->is_subscribed = 1;
-
-    char channels[1024];
-    get_channels(req, channels, 1024);
-
+    printf("Entered sub\n");
+    
     char msg[1024];
-    int offset = snprintf(msg, sizeof(msg), "*%ld\r\n$9\r\nsubscribe\r\n", strlen(channels) + 1);
-    for(int i = 0; i < req->argc; i++){
+    int offset = 0;
+    for (int i = 0; i < req->argc; i++) {
+        client->channel_subed[i] = strdup(req->args[i]);
 
-        int remaining = sizeof(msg) - offset;
-        if (remaining <= 0) break;
+        int written = snprintf(msg + offset, sizeof(msg) - offset,
+            "*3\r\n$9\r\nsubscribe\r\n$%zu\r\n%s\r\n:%d\r\n",
+            strlen(req->args[i]), req->args[i], i + 1);
 
-        int written = snprintf(msg + offset, sizeof(msg) - offset, 
-                            "$%zu\r\n%s\r\n", strlen(req->args[i]), req->args[i]);
-        
         if (written > 0 && offset + written < sizeof(msg)) {
             offset += written;
-        }
-        else {
+        } else {
             break;
         }
     }
-    send(client->fd, msg, offset, 0);
+    printf("first val: %s\n", client->channel_subed[0]);
+    printf("Msg is: %s\n", msg);
+    printf("Offset: %d\n", offset);
+    send(client->fd, msg, strlen(msg), 0);
 
 }
 
