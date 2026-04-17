@@ -287,28 +287,7 @@ fail:
 
 
 
-static void table_insert(const char *key, void *value,
-                         RedisType type, long long expires_at) {
-    unsigned int idx = hash((char*)key);
 
-    for (Entry *e = table[idx]; e; e = e->next) {
-        if (strcmp(e->key, key) == 0) {
-            e->value      = value;
-            e->type       = type;
-            e->expires_at = expires_at;
-            return;
-        }
-    }
-
-    Entry *e = malloc(sizeof(Entry));
-    if (!e) return;
-    e->key        = strdup(key);
-    e->value      = value;
-    e->type       = type;
-    e->expires_at = expires_at;
-    e->next       = table[idx];
-    table[idx]    = e;
-}
 
 
 int load_rdb_into_table(void) {
@@ -368,14 +347,20 @@ int load_rdb_into_table(void) {
             char *val = rdb_read_string(f);
             if (!val) { free(key); break; }
             printf("RDB LOADED: key=%s val=%s\n", key, val);
-            table_insert(key, val, TYPE_STRING, expiry_ms);
+            store_set(key, val, NO_TIME_FLAG, -1, TYPE_STRING);
+            if (expiry_ms > 0) {
+                table[hash(key)]->expires_at = expiry_ms;
+            }
             printf("INSERTED at index: %d\n", hash(key));
             loaded++;
 
         } else if (value_type == 19) {          // ── STREAM
-            Stream *s = rdb_read_stream(f);
-            if (!s) { free(key); break; }
-            table_insert(key, s, TYPE_STRING, expiry_ms);
+            Stream *stream = rdb_read_stream(f);
+            if (!stream) { free(key); break; }
+            store_set(key, stream, NO_TIME_FLAG, -1, TYPE_STREAM);
+            if (expiry_ms > 0) {
+                table[hash(key)]->expires_at = expiry_ms;
+            }
             loaded++;
 
         } else {
