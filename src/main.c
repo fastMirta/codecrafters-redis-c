@@ -393,7 +393,7 @@ int main(int argc, char *argv[]) {
                 continue;
             }
 
-            if (clients[i]->is_blocked && !clients[i]->is_replica) continue;
+            if (clients[i]->is_blocked && !clients[i]->is_replica && !clients[i]->is_subscribed) continue;
 
             char buffer[4096];
             int bytes_received = recv(watch_list[i].fd, buffer, sizeof(buffer) - 1, 0);

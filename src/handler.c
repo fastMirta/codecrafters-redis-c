@@ -625,6 +625,12 @@ int handle(RespRequest *req, Client *client) {
         return 0;
     }
 
+    if(client->is_subscribed && req->command != SUBSCRIBE){
+        char *err_msg = "-ERR only (P)SUBSCRIBE / (P)UNSUBSCRIBE / PING / QUIT allowed in this state\r\n";
+        send(client->fd, err_msg, strlen(err_msg), 0);
+        return 0;
+    }
+
     printf("Is queued after multi: %d", client->is_queued);
 
     // Utility cmds
