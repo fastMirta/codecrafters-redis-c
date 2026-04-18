@@ -627,12 +627,12 @@ int handle(RespRequest *req, Client *client) {
 
     if(client->is_subscribed && req->command != SUBSCRIBE){
         //ERR Can't execute 'echo': only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context
-        char *err_msg = "-ERR Can't execute '%s' only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context\r\n";
         char errorBuffer[128];
         snprintf(errorBuffer, sizeof(errorBuffer), 
         "-ERR Can't execute '%s' only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context\r\n",
          cmd_to_string(req->command));
-        send(client->fd, err_msg, strlen(err_msg), 0);
+        printf("error: %s\n", errorBuffer);
+        send(client->fd, errorBuffer, strlen(errorBuffer), 0);
         return 0;
     }
 
