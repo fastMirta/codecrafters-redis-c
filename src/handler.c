@@ -648,7 +648,7 @@ int handle(RespRequest *req, Client *client) {
             handle_ping(client->fd);
         }
         else if(client->is_subscribed){
-            char *msg = "*2\r\n$4\r\nPONG\r\n$0\r\n";
+            char *msg = "*2\r\n$4\r\nPONG\r\n$0\r\n\r\n";
             send(client->fd, msg, strlen(msg), 0);
         }
         return 0; 
