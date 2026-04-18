@@ -625,7 +625,7 @@ int handle(RespRequest *req, Client *client) {
         return 0;
     }
 
-    if(client->is_subscribed && (req->command != SUBSCRIBE || req->command != PING)){
+    if(client->is_subscribed && req->command != SUBSCRIBE && req->command != PING){
         //ERR Can't execute 'echo': only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context
         char errorBuffer[128];
         snprintf(errorBuffer, sizeof(errorBuffer), 
