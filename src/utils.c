@@ -393,68 +393,53 @@ int isWriteCmd(REDIS_CMDS cmd){
 
 
 char* cmd_to_string(REDIS_CMDS cmdName){
-    if (cmdName == ECHO) return "ECHO";
-    if (cmdName == PING) return "PING";
-    if (cmdName == INFO) return "INFO";
-    if (cmdName == REPLCONF) return "REPLCONF";
-    if (cmdName == WAIT)   return "WAIT";
-    if (cmdName == PSYNC) return "PSYNC";
-    if (cmdName == KEYS) return "KEYS";
-    if (cmdName == AUTH) return "AUTH";
-    if (cmdName == SELECT) return "SELECT";
-    if (cmdName == COMMAND) return "COMMAND";
-
-    // Core cmds (Generic)
-    if (cmdName == SET) return "SET";
-    if (cmdName == GET) return "GET";
-    if (cmdName == DEL) return "DEL";
-    if (cmdName == EXISTS) return "EXISTS";
-    if (cmdName == EXPIRE) return "EXPIRE";
-    if (cmdName == TTL) return "TTL";
-    if (cmdName == TYPE) return "TYPE";
-
-    // String & Number specific cmds
-    if (cmdName == INCR) return "INCR";
-    if (cmdName == DECR) return "DECR";
-    if (cmdName == APPEND) return "APPEND";
-    if (cmdName == STRLEN) return "STRLEN";
-    if (cmdName == MGET) return "MGET";
-
-    // Transaction cmds
-    if(cmdName == MULTI)   return "MULTI";
-    if(cmdName == EXEC)    return "EXEC";
-    if(cmdName == DISCARD) return "DISCARD"; 
-
-    // List cmds (Added real list commands)
-    if (cmdName == LPUSH) return "LPUSH";
-    if (cmdName == RPUSH) return "RPUSH";
-    if (cmdName == LPOP) return "LPOP";
-    if (cmdName == RPOP) return "RPOP";
-    if (cmdName == LLEN) return "LLEN";
-    if (cmdName == LRANGE) return "LRANGE";
-
-    // Hash cmds (Fixed: H-commands are Hashes, not Lists)
-    if (cmdName == HSET) return "HSET";
-    if (cmdName == HGET) return "HGET";
-    if (cmdName == HGETALL) return "HGETALL";
-    if (cmdName == HDEL) return "HDEL";
-
-    // Sets cmds
-    if (cmdName == SADD) return "SADD";
-    if (cmdName == SREM) return "SREM";
-    if (cmdName == SMEMBERS) return "SMEMBERS";
-    if (cmdName == SISMEMBER) return "SISMEMBER";
-
-    // Stream cmds
-    if (cmdName == XADD) return "XADD";
-    if (cmdName == XREAD) return "XREAD";
-    if (cmdName == XRANGE) return "XRANGE";
-    if (cmdName == XGROUP) return "XGROUP";
-
-    // Sub/Pub cmds 
-    if (cmdName == SUBSCRIBE) return "SUBSCRIBE";
-
-    return UNKNOWN;
+    switch(cmdName) {
+        case ECHO:     return "ECHO";
+        case PING:     return "PING";
+        case INFO:     return "INFO";
+        case REPLCONF: return "REPLCONF";
+        case WAIT:     return "WAIT";
+        case PSYNC:    return "PSYNC";
+        case AUTH:     return "AUTH";
+        case SELECT:   return "SELECT";
+        case COMMAND:  return "COMMAND";
+        case SET:      return "SET";
+        case GET:      return "GET";
+        case DEL:      return "DEL";
+        case EXISTS:   return "EXISTS";
+        case EXPIRE:   return "EXPIRE";
+        case TTL:      return "TTL";
+        case TYPE:     return "TYPE";
+        case INCR:     return "INCR";
+        case DECR:     return "DECR";
+        case APPEND:   return "APPEND";
+        case STRLEN:   return "STRLEN";
+        case MGET:     return "MGET";
+        case MULTI:    return "MULTI";
+        case EXEC:     return "EXEC";
+        case DISCARD:  return "DISCARD";
+        case WATCH:    return "WATCH";
+        case LPUSH:    return "LPUSH";
+        case RPUSH:    return "RPUSH";
+        case LPOP:     return "LPOP";
+        case RPOP:     return "RPOP";
+        case LLEN:     return "LLEN";
+        case LRANGE:   return "LRANGE";
+        case HSET:     return "HSET";
+        case HGET:     return "HGET";
+        case HGETALL:  return "HGETALL";
+        case HDEL:     return "HDEL";
+        case SADD:     return "SADD";
+        case SREM:     return "SREM";
+        case SMEMBERS: return "SMEMBERS";
+        case SISMEMBER:return "SISMEMBER";
+        case XADD:     return "XADD";
+        case XREAD:    return "XREAD";
+        case XRANGE:   return "XRANGE";
+        case XGROUP:   return "XGROUP";
+        case SUBSCRIBE: return "SUBSCRIBE";
+        default:       return "UNKNOWN";
+    }
 }
 
 

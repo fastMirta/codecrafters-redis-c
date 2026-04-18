@@ -131,54 +131,6 @@ int validate_server_response(int stepLevel, char *serversResponse){
 
 }
 
-const char* cmd_to_string(REDIS_CMDS cmd) {
-    switch(cmd) {
-        case ECHO:     return "ECHO";
-        case PING:     return "PING";
-        case INFO:     return "INFO";
-        case REPLCONF: return "REPLCONF";
-        case WAIT:     return "WAIT";
-        case PSYNC:    return "PSYNC";
-        case AUTH:     return "AUTH";
-        case SELECT:   return "SELECT";
-        case COMMAND:  return "COMMAND";
-        case SET:      return "SET";
-        case GET:      return "GET";
-        case DEL:      return "DEL";
-        case EXISTS:   return "EXISTS";
-        case EXPIRE:   return "EXPIRE";
-        case TTL:      return "TTL";
-        case TYPE:     return "TYPE";
-        case INCR:     return "INCR";
-        case DECR:     return "DECR";
-        case APPEND:   return "APPEND";
-        case STRLEN:   return "STRLEN";
-        case MGET:     return "MGET";
-        case MULTI:    return "MULTI";
-        case EXEC:     return "EXEC";
-        case DISCARD:  return "DISCARD";
-        case WATCH:    return "WATCH";
-        case LPUSH:    return "LPUSH";
-        case RPUSH:    return "RPUSH";
-        case LPOP:     return "LPOP";
-        case RPOP:     return "RPOP";
-        case LLEN:     return "LLEN";
-        case LRANGE:   return "LRANGE";
-        case HSET:     return "HSET";
-        case HGET:     return "HGET";
-        case HGETALL:  return "HGETALL";
-        case HDEL:     return "HDEL";
-        case SADD:     return "SADD";
-        case SREM:     return "SREM";
-        case SMEMBERS: return "SMEMBERS";
-        case SISMEMBER:return "SISMEMBER";
-        case XADD:     return "XADD";
-        case XREAD:    return "XREAD";
-        case XRANGE:   return "XRANGE";
-        case XGROUP:   return "XGROUP";
-        default:       return "UNKNOWN";
-    }
-}
 
 int copy_request_toBuffer(RespRequest *req, char *buffer, int bufferSize) {
     int offset = 0;
