@@ -392,5 +392,70 @@ int isWriteCmd(REDIS_CMDS cmd){
 }
 
 
+char* cmd_to_string(REDIS_CMDS cmdName){
+    if (cmdName == ECHO) return "ECHO";
+    if (cmdName == PING) return "PING";
+    if (cmdName == INFO) return "INFO";
+    if (cmdName == REPLCONF) return "REPLCONF";
+    if (cmdName == WAIT)   return "WAIT";
+    if (cmdName == PSYNC) return "PSYNC";
+    if (cmdName == KEYS) return "KEYS";
+    if (cmdName == AUTH) return "AUTH";
+    if (cmdName == SELECT) return "SELECT";
+    if (cmdName == COMMAND) return "COMMAND";
+
+    // Core cmds (Generic)
+    if (cmdName == SET) return "SET";
+    if (cmdName == GET) return "GET";
+    if (cmdName == DEL) return "DEL";
+    if (cmdName == EXISTS) return "EXISTS";
+    if (cmdName == EXPIRE) return "EXPIRE";
+    if (cmdName == TTL) return "TTL";
+    if (cmdName == TYPE) return "TYPE";
+
+    // String & Number specific cmds
+    if (cmdName == INCR) return "INCR";
+    if (cmdName == DECR) return "DECR";
+    if (cmdName == APPEND) return "APPEND";
+    if (cmdName == STRLEN) return "STRLEN";
+    if (cmdName == MGET) return "MGET";
+
+    // Transaction cmds
+    if(cmdName == MULTI)   return "MULTI";
+    if(cmdName == EXEC)    return "EXEC";
+    if(cmdName == DISCARD) return "DISCARD"; 
+
+    // List cmds (Added real list commands)
+    if (cmdName == LPUSH) return "LPUSH";
+    if (cmdName == RPUSH) return "RPUSH";
+    if (cmdName == LPOP) return "LPOP";
+    if (cmdName == RPOP) return "RPOP";
+    if (cmdName == LLEN) return "LLEN";
+    if (cmdName == LRANGE) return "LRANGE";
+
+    // Hash cmds (Fixed: H-commands are Hashes, not Lists)
+    if (cmdName == HSET) return "HSET";
+    if (cmdName == HGET) return "HGET";
+    if (cmdName == HGETALL) return "HGETALL";
+    if (cmdName == HDEL) return "HDEL";
+
+    // Sets cmds
+    if (cmdName == SADD) return "SADD";
+    if (cmdName == SREM) return "SREM";
+    if (cmdName == SMEMBERS) return "SMEMBERS";
+    if (cmdName == SISMEMBER) return "SISMEMBER";
+
+    // Stream cmds
+    if (cmdName == XADD) return "XADD";
+    if (cmdName == XREAD) return "XREAD";
+    if (cmdName == XRANGE) return "XRANGE";
+    if (cmdName == XGROUP) return "XGROUP";
+
+    // Sub/Pub cmds 
+    if (cmdName == SUBSCRIBE) return "SUBSCRIBE";
+
+    return UNKNOWN;
+}
+
 
 
