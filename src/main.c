@@ -150,6 +150,70 @@ int copy_request_toBuffer(RespRequest *req, char *buffer, int bufferSize) {
     return offset;
 }
 
+
+static int recv_and_validate(char *buf, int bufSize, int step) {
+    memset(buf, 0, bufSize);
+    recv(server_config.master_fd, buf, bufSize - 1, 0);
+    return validate_server_response(step, buf);
+}
+
+static void drain_rdb(char *buf, long long bytesRead) {
+    char *rdb_start = strchr(buf, '$');
+    if (!rdb_start) return;
+
+    int rdb_len = atoi(rdb_start + 1);
+    char *data_start = strstr(rdb_start, "\r\n");
+    if (!data_start) return;
+
+    data_start += 2;
+    int remaining = rdb_len - (int)((buf + bytesRead) - data_start);
+
+    while (remaining > 0) {
+        char discard[1024];
+        int n = recv(server_config.master_fd, discard,
+                     remaining < 1024 ? remaining : 1024, 0);
+        if (n <= 0) break;
+        remaining -= n;
+    }
+}
+
+static void add_master_to_watchlist(struct pollfd *watch_list, int *active_fds) {
+    watch_list[*active_fds].fd     = server_config.master_fd;
+    watch_list[*active_fds].events = POLLIN;
+    watch_list[*active_fds].revents = 0;
+    clients[*active_fds] = calloc(1, sizeof(Client));
+    clients[*active_fds]->fd = server_config.master_fd;
+    (*active_fds)++;
+    printf("Added master_fd to watch list\n");
+}
+
+static void do_slave_handshake(struct pollfd *watch_list, int *active_fds) {
+    char buf[1024];
+
+    // Step 0: expect PONG
+    if (recv_and_validate(buf, sizeof(buf), 0) != 0) {
+        printf("Handshake failed at PING step\n");
+        return;
+    }
+    printf("Data received from server: %s\n", buf);
+
+    // Step 1: REPLCONF, expect OK
+    handle_replconf(buf, sizeof(buf));
+    if (validate_server_response(1, buf) != 0) {
+        printf("Handshake failed at REPLCONF step\n");
+        return;
+    }
+
+    // Step 2: PSYNC, drain RDB
+    handle_psync("?", -1);
+    long long bytesRead = recv(server_config.master_fd, buf, sizeof(buf) - 1, 0);
+    buf[bytesRead] = '\0';
+    printf("bytes read: %lld\nresponse to last step: %s\n", bytesRead, buf);
+    drain_rdb(buf, bytesRead);
+
+    add_master_to_watchlist(watch_list, active_fds);
+}
+
 /**Sends Write cmd to all replica */
 void pass_data_toReplica(RespRequest *req){
     printf("pass_data_toReplica called, cmd=%d\n", req->command);
@@ -235,37 +299,8 @@ int main(int argc, char *argv[]) {
 
     // Does handshake only for slave
     if (strcmp(server_config.role, "slave") == 0) {
-        char serverResponse[1024];
-        memset(serverResponse, 0, sizeof(serverResponse));
-
-        recv(server_config.master_fd, serverResponse, sizeof(serverResponse) - 1, 0);
-        printf("Data received from server: %s\n", serverResponse);
-
-        int validRes = validate_server_response(0, serverResponse);
-        if (validRes == 0) {
-            handle_replconf(serverResponse, sizeof(serverResponse));
-            validRes = validate_server_response(1, serverResponse);
-            if (validRes == 0) {
-                handle_psync("?", -1);
-                long long byteRead = recv(server_config.master_fd, serverResponse, sizeof(serverResponse) - 1, 0);
-                printf("bytes read: %lld\n", byteRead);
-                printf("response to last step: %s\n", serverResponse);
-            } else {
-                printf("last step isn't valid\n");
-            }
-        } else {
-            printf("Not valid\n");
-        }
-
-        watch_list[active_fds].fd = server_config.master_fd;
-        watch_list[active_fds].events = POLLIN;
-        watch_list[active_fds].revents = 0;
-        clients[active_fds] = calloc(1, sizeof(Client));
-        clients[active_fds]->fd = server_config.master_fd;
-        active_fds++;
-        printf("Added master_fd to watch list\n");
+        do_slave_handshake(watch_list, &active_fds);
     }
-
     server_config.wait_client_fd = -1;
     while(1) {
         int poll_count = poll(watch_list, active_fds, 100);
