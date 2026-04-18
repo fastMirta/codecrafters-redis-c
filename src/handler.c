@@ -625,7 +625,7 @@ int handle(RespRequest *req, Client *client) {
         return 0;
     }
 
-    if(client->is_subscribed && req->command != SUBSCRIBE){
+    if(client->is_subscribed && (req->command != SUBSCRIBE || req->command != PING)){
         //ERR Can't execute 'echo': only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context
         char errorBuffer[128];
         snprintf(errorBuffer, sizeof(errorBuffer), 
@@ -644,8 +644,12 @@ int handle(RespRequest *req, Client *client) {
         return 0;
     }
     if (req->command == PING) {
-        if (!from_master(client)) {
+        if (!from_master(client) && !client->is_subscribed) {
             handle_ping(client->fd);
+        }
+        else if(client->is_subscribed){
+            char *msg = "*2\r\n$4\r\nPONG\r\n$0\r\n";
+            send(client->fd, msg, 19, 0);
         }
         return 0; 
     }
