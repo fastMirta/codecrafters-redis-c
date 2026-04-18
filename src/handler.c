@@ -649,7 +649,7 @@ int handle(RespRequest *req, Client *client) {
         }
         else if(client->is_subscribed){
             char *msg = "*2\r\n$4\r\nPONG\r\n$0\r\n";
-            send(client->fd, msg, 19, 0);
+            send(client->fd, msg, strlen(msg), 0);
         }
         return 0; 
     }
