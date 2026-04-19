@@ -184,6 +184,32 @@ void handle_zcard(RespRequest *req, int client_fd){
     send(client_fd, sortLength, strlen(sortLength), 0);
 }
 
+void handle_zscore(RespRequest *req, int client_fd){
+    if(req->argc < 2){return;}
+
+    Entry *entry = store_getEntry(req->args[0]);
+    if (entry == NULL || entry->value == NULL) {
+        send(client_fd, "$-1\r\n", 5, 0);
+        return;
+    }
+
+    ZSet *sortedSet = (ZSet*) entry->value;
+    ZSetEntry *ptr = sortedSet->head;
+    for(int i = 0; i < sortedSet->length; i++){
+        if(strcmp(req->args[1], ptr->member) == 0){
+            char memberScore[128];
+            char scoreLength[64];
+            snprintf(scoreLength, sizeof(scoreLength), "%f", ptr->score);
+            snprintf(memberScore, sizeof(memberScore), "$%zd\r\n%s\r\n", strlen(scoreLength), scoreLength);
+            send(client_fd, memberScore, strlen(memberScore), 0);
+            return;
+        }
+        ptr = ptr->next;
+    }
+    send(client_fd, "$-1\r\n", 5, 0);
+}
+
+
 //ZREVRANK:
 /*void handle_zrank(RespRequest *req, int client_fd){
     if(req->argc < 2){return;}
