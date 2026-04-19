@@ -236,6 +236,7 @@ int main(int argc, char *argv[]) {
     setbuf(stderr, NULL);
     struct pollfd watch_list[MAX_CLIENTS];
 
+
     memset(watch_list, 0, sizeof(watch_list));
     for (int i = 0; i < MAX_CLIENTS; i++) {
         clients[i] = NULL;

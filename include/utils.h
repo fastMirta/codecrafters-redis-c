@@ -46,11 +46,23 @@ typedef struct Stream {
     size_t length;
 } Stream;
 
+typedef struct ZSetEntry {
+    char *member;          
+    double score;          
+    struct ZSetEntry *next; 
+} ZSetEntry;
+
+typedef struct {
+    ZSetEntry *head;        
+    size_t length;          
+} ZSet;
+
 extern Entry *table[TABLE_SIZE];
 
 void toUpper(char *str);
 int hash(char *key);
 void store_set_stream(char *key, Stream *stream);
+void store_set_zset(char *key, ZSet *zSet);
 void store_set(char *key, void *value, TIME_FLAGS flag, int seconds, RedisType type);
 char* store_get(char *key);
 Entry *store_getEntry(char *key);

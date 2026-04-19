@@ -9,6 +9,7 @@
 #include "utils.h"
 #include "rdb_handler.h"
 #include "channels_handler.h"
+#include "set_handler.h"
 
 
 
@@ -301,6 +302,9 @@ void handle_set(RespRequest *req, RedisType type, int client_fd, int isQueued){
     }
     if(type == TYPE_STREAM){
         handle_set_stream(req, client_fd, isQueued);
+    }
+    else if(type == TYPE_ZSET){
+        //handle_zadd(req, client_fd);
     }
     else{
         TIME_FLAGS time = NO_TIME_FLAG;
@@ -773,6 +777,12 @@ int handle(RespRequest *req, Client *client) {
     if (req->command == SREM)      { return 0; }
     if (req->command == SMEMBERS)  { return 0; }
     if (req->command == SISMEMBER) { return 0; }
+
+    // Sorted sets cmds
+    if (req->command == ZADD){
+        handle_zadd(req, client->fd);
+        return 0;
+    }
 
     // Stream cmds
     if (req->command == XADD){ 

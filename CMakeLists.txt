@@ -13,6 +13,7 @@ set(SOURCE_FILES
     src/utility_handler.c
     src/rdb_handler.c
     src/channels_handler.c
+    src/set_handler.c
     
 )
 

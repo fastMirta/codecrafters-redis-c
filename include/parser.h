@@ -64,6 +64,9 @@ typedef enum {
     SMEMBERS,
     SISMEMBER,
 
+    // Sorted sets
+    ZADD,
+
     // Stream cmds
     XADD,
     XREAD,

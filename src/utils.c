@@ -42,7 +42,7 @@ int validate_set_stream(int index){
 void store_set_stream(char *key, Stream *stream){
     int index = hash(key);
     if (table[index] == NULL)
-        table[index] = malloc(sizeof(Stream));
+        table[index] = malloc(sizeof(Entry));
     else{
         free(table[index]->key);
         free(table[index]->value);
@@ -54,6 +54,22 @@ void store_set_stream(char *key, Stream *stream){
     printf("\n");
     printf("SUCCESS IN SET STREAM \n");
 
+}
+
+void store_set_zset(char *key, ZSet *zSet){
+    int index = hash(key);
+    if (table[index] == NULL)
+        table[index] = malloc(sizeof(Entry));
+    else{
+        free(table[index]->key);
+        free(table[index]->value);
+    }
+    table[index]->key = strdup(key);
+    table[index]->value = zSet;
+    table[index]->expires_at = 0;
+    table[index]->type = TYPE_ZSET;
+    printf("\n");
+    printf("SUCCESS IN SET STREAM \n");
 }
 
 
@@ -96,7 +112,7 @@ void store_set(char *key, void *value, TIME_FLAGS flag, int seconds, RedisType t
             existing->expires_at = now + (long long)seconds;
     }
 
-    printf("Saved value: %s with key: %s\n", table[index]->key, table[index]->value);
+    printf("Saved value: %s with key: %s\n", table[index]->key, (char*)table[index]->value);
 }
 
 
