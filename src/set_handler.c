@@ -80,64 +80,17 @@ void handle_zadd(RespRequest *req, int client_fd){
     }
 
     double newScore = atof(req->args[1]);
-    if(sortedSet->length == 0){
-        ZSetEntry *firstEntry = malloc(sizeof(ZSetEntry));
-        
-        firstEntry->next = NULL;
-        firstEntry->score = newScore;
-        firstEntry->member = strdup(req->args[2]);
-        sortedSet->head = firstEntry;
-        sortedSet->length++;
+    char *member = req->args[2];
 
+    int existed = zset_remove(sortedSet, member);
+
+    zset_add(sortedSet, newScore, member);
+
+    if (existed) {
+        send(client_fd, ":0\r\n", 4, 0);
+    } else {
         send(client_fd, ":1\r\n", 4, 0);
-        return;
     }
-
-    ZSetEntry *zsortEntry = sortedSet->head;
-    for(int i = 0; i < sortedSet->length; i++){
-        if(zsortEntry->score > newScore && strcmp(req->args[2], zsortEntry->member) != 0){
-            ZSetEntry *temp = zsortEntry->next;
-            ZSetEntry *newValue = malloc(sizeof(ZSetEntry));
-            if(newValue == NULL){
-                printf("No place in memory\n");
-                send(client_fd, "-ERR memory empty", 17, 0);
-            }
-
-            newValue->next = temp;
-            newValue->score = newScore;
-            newValue->member = strdup(req->args[2]);
-            zsortEntry->next = newValue;
-            sortedSet->length++;
-
-            send(client_fd, ":1\r\n", 4, 0);
-            return;
-        }
-        else if(zsortEntry->score < newScore && strcmp(req->args[2], zsortEntry->member) == 0){
-            zsortEntry->score = newScore;
-            send(client_fd, ":0\r\n", 4, 0);
-            return;
-        }
-        else if(zsortEntry->score > newScore && strcmp(req->args[2], zsortEntry->member) == 0){
-            ZSetEntry *toDelete = zsortEntry;
-            zset_remove(sortedSet, req->args[2]); 
-            zset_add(sortedSet, newScore, req->args[2]);
-            send(client_fd, ":0\r\n", 4, 0);
-            return;
-        }
-        if(zsortEntry->next == NULL){
-            break;
-        }
-        zsortEntry = zsortEntry->next;
-    }
-    ZSetEntry *newEntry = malloc(sizeof(ZSetEntry));
-    newEntry->next = NULL;
-    newEntry->score = newScore;
-    newEntry->member = strdup(req->args[2]);
-    zsortEntry->next = newEntry;
-    sortedSet->length++;
-
-    send(client_fd, ":1\r\n", 4, 0);
-    return;
 }
 
 void handle_zrank(RespRequest *req, int client_fd){
