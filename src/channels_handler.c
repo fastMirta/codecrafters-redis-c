@@ -90,7 +90,7 @@ void handle_publish(RespRequest *req, int client_fd){
             }
         }
     }
-    char clientSubed[64];
-    snprintf(clientsSubed, sizeof(clientsSubed), ":%d\r\n", clientsSubed);
-    send(client_fd, clientsSubed, strlen(clientsSubed), 0);
+    char clientSubedMsg[64];
+    snprintf(clientSubedMsg, sizeof(clientSubedMsg), ":%d\r\n", clientsSubed);
+    send(client_fd, clientSubedMsg, strlen(clientSubedMsg), 0);
 }
