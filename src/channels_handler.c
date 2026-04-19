@@ -79,13 +79,18 @@ void handle_subscribe(RespRequest *req, Client *client){
 
 }
 
-void handle_publish(RespRequest *req){
+void handle_publish(RespRequest *req, int client_fd){
     //TODO: change to hash map for faster reading
+    int clientsSubed = 0;
     for(int i = 0; i < MAX_CLIENTS; i++){
         for(int j = 0; j < clients[i]->channel_count; i++){
             if(strcmp(clients[i]->channel_subed[j], req->args[0]) == 0){
+                clientsSubed++;
                 send(clients[i]->fd, req->args[1], strlen(req->args[1]), 0);
             }
         }
     }
+    char clientSubed[64];
+    snprintf(clientsSubed, sizeof(clientsSubed), ":%d\r\n", clientsSubed);
+    send(client_fd, clientsSubed, strlen(clientsSubed), 0);
 }
