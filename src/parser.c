@@ -177,6 +177,7 @@ REDIS_CMDS findRedisCmd(char *cmdName) {
     if (strcmp(cmdName, "ZADD") == 0) return ZADD;
     if (strcmp(cmdName, "ZRANK") == 0) return ZRANK;
     if (strcmp(cmdName, "ZRANGE") == 0) return ZRANGE;
+    if (strcmp(cmdName, "ZCARD") == 0) return ZCARD;
 
     // Sub/Pub cmds 
     if (strcmp(cmdName, "SUBSCRIBE") == 0) return SUBSCRIBE;

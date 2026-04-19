@@ -792,6 +792,10 @@ int handle(RespRequest *req, Client *client) {
         handle_zrange(req, client->fd);
         return 0;
     }
+    if (req->command == ZCARD){
+        handle_zcard(req, client->fd);
+        return 0;
+    }
 
     // Stream cmds
     if (req->command == XADD){ 

@@ -168,6 +168,21 @@ void handle_zrange(RespRequest *req, int client_fd){
     send(client_fd, members, offset, 0);
 }
 
+/*Sends to the client the length of the sorted set, if not exist sends 0*/
+void handle_zcard(RespRequest *req, int client_fd){
+    if(req->argc < 1){return;}
+
+    Entry *entry = store_getEntry(req->args[0]);
+    if (entry == NULL || entry->value == NULL) {
+        send(client_fd, ":0\r\n", 4, 0);
+        return;
+    }
+
+    ZSet *sortedSet = (ZSet*) entry->value;
+    char sortLength[128];
+    snprintf(sortLength, sizeof(sortLength), ":%zd\r\n", sortedSet->length);
+    send(client_fd, sortLength, strlen(sortLength), 0);
+}
 
 //ZREVRANK:
 /*void handle_zrank(RespRequest *req, int client_fd){
