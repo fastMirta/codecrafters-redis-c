@@ -209,6 +209,30 @@ void handle_zscore(RespRequest *req, int client_fd){
     send(client_fd, "$-1\r\n", 5, 0);
 }
 
+void handle_zrem(RespRequest *req, int client_fd) {
+    if (req->argc < 2) return;
+
+    Entry *entry = store_getEntry(req->args[0]);
+    if (entry == NULL || entry->value == NULL) {
+        send(client_fd, ":0\r\n", 4, 0); 
+        return;
+    }
+
+    ZSet *sortedSet = (ZSet*)entry->value;
+    int total_removed = 0;
+
+    for (int i = 1; i < req->argc; i++) {
+        char *member_to_remove = req->args[i];
+        
+        if (zset_remove(sortedSet, member_to_remove)) {
+            total_removed++;
+        }
+    }
+
+    char response[64];
+    int len = snprintf(response, sizeof(response), ":%d\r\n", total_removed);
+    send(client_fd, response, len, 0);
+}
 
 //ZREVRANK:
 /*void handle_zrank(RespRequest *req, int client_fd){

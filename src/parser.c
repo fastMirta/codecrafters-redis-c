@@ -184,6 +184,7 @@ REDIS_CMDS findRedisCmd(char *cmdName) {
     if (strcmp(cmdName, "SUBSCRIBE") == 0) return SUBSCRIBE;
     if(strcmp(cmdName, "PUBLISH") == 0) return PUBLISH;
     if(strcmp(cmdName, "UNSUBSCRIBE") == 0) return UNSUBSCRIBE;
+    if (strcmp(cmdName, "ZREM") == 0) return ZREM;
 
     return UNKNOWN;
 }

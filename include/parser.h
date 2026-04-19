@@ -70,6 +70,7 @@ typedef enum {
     ZRANGE,
     ZCARD,
     ZSCORE,
+    ZREM,
 
     // Stream cmds
     XADD,
