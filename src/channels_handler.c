@@ -93,7 +93,7 @@ void handle_publish(RespRequest *req, int client_fd){
         if(clients[i]){
             printf("channels count: %d\n", clients[i]->channel_count);
             printf("channel null? %d\n", clients[i]->channel_subed == NULL);
-            for(int j = 0; j < clients[i]->channel_count; i++){
+            for(int j = 0; j < clients[i]->channel_count; j++){
             if(strcmp(clients[i]->channel_subed[j], req->args[0]) == 0){
                 clientsSubed++;
                 char publishMsg[1024];
