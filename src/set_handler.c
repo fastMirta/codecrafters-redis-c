@@ -128,7 +128,7 @@ void handle_zrange(RespRequest *req, int client_fd){
 
     Entry *entry = store_getEntry(req->args[0]);
     if (entry == NULL || entry->value == NULL) {
-        send(client_fd, "$-1\r\n", 5, 0);
+        send(client_fd, "*0\r\n", 4, 0);
         return;
     }
     
