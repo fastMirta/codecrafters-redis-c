@@ -17,6 +17,7 @@ typedef struct Client{
     int is_queued;
     int is_subscribed;
     int is_replica;
+    int is_master;
     int is_waiting;
     long long repl_offset;
     long long timeout_at;

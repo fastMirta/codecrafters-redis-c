@@ -183,6 +183,7 @@ static void add_master_to_watchlist(struct pollfd *watch_list, int *active_fds) 
     watch_list[*active_fds].revents = 0;
     clients[*active_fds] = calloc(1, sizeof(Client));
     clients[*active_fds]->fd = server_config.master_fd;
+    clients[*active_fds]->is_master = 1;
     (*active_fds)++;
     printf("Added master_fd to watch list\n");
 }

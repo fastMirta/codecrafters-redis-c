@@ -18,7 +18,8 @@ extern Client *clients[MAX_CLIENTS];
 static inline int from_master(Client *client) {
     printf("client fd: %d\n", client->fd);
     printf("server fd: %d\n", server_config.master_fd);
-    return client->fd == server_config.master_fd;
+    //return client->fd == server_config.master_fd;
+    return client->is_master;
 }
 
 /**Copy src request to the dest request
