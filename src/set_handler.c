@@ -117,6 +117,9 @@ void handle_zadd(RespRequest *req, int client_fd){
             send(client_fd, ":0\r\n", 4, 0);
             return;
         }
+        if(zsortEntry->next == NULL){
+            break;
+        }
         zsortEntry = zsortEntry->next;
     }
     ZSetEntry *newEntry = malloc(sizeof(ZSetEntry));
