@@ -96,10 +96,10 @@ void handle_publish(RespRequest *req, int client_fd){
             for(int j = 0; j < clients[i]->channel_count; i++){
             if(strcmp(clients[i]->channel_subed[j], req->args[0]) == 0){
                 clientsSubed++;
-                char publishMsg[1024];//message
+                char publishMsg[1024];
                 snprintf(publishMsg, sizeof(publishMsg), "*3\r\n$7\r\nmessage\r\n$%d\r\n%s\r\n$%d\r\n%s\r\n",
                  strlen(req->args[0]), req->args[0], strlen(req->args[1]), req->args[1]);
-                send(clients[i]->fd, req->args[1], strlen(req->args[1]), 0);
+                send(clients[i]->fd, publishMsg, strlen(publishMsg), 0);
             }
         }
         }
