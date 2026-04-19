@@ -784,6 +784,10 @@ int handle(RespRequest *req, Client *client) {
         handle_zadd(req, client->fd);
         return 0;
     }
+    if (req->command == ZRANK){
+        handle_zrank(req, client->fd);
+        return 0;
+    }
 
     // Stream cmds
     if (req->command == XADD){ 

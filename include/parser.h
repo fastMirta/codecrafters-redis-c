@@ -66,6 +66,7 @@ typedef enum {
 
     // Sorted sets
     ZADD,
+    ZRANK,
 
     // Stream cmds
     XADD,
