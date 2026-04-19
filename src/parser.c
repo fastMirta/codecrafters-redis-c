@@ -175,6 +175,7 @@ REDIS_CMDS findRedisCmd(char *cmdName) {
 
     // Sub/Pub cmds 
     if (strcmp(cmdName, "SUBSCRIBE") == 0) return SUBSCRIBE;
+    if(strcmp(cmdName, "PUBLISH") == 0) return PUBLISH;
 
     return UNKNOWN;
 }

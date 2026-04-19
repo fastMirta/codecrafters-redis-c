@@ -301,6 +301,11 @@ int main(int argc, char *argv[]) {
     if (strcmp(server_config.role, "slave") == 0) {
         do_slave_handshake(watch_list, &active_fds);
     }
+
+    // for(int i = 0; i < MAX_CLIENTS; i++){
+    //     clients[i]->channel_subed = strdup();
+    // }
+
     server_config.wait_client_fd = -1;
     while(1) {
         int poll_count = poll(watch_list, active_fds, 100);

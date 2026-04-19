@@ -81,14 +81,26 @@ void handle_subscribe(RespRequest *req, Client *client){
 
 void handle_publish(RespRequest *req, int client_fd){
     //TODO: change to hash map for faster reading
+    if(req->argc < 2){
+        return;
+    }
+
     int clientsSubed = 0;
+    
     for(int i = 0; i < MAX_CLIENTS; i++){
-        for(int j = 0; j < clients[i]->channel_count; i++){
+        
+        printf("Is null? %d\n", clients[i] == NULL);
+        if(clients[i]){
+            printf("channels count: %d\n", clients[i]->channel_count);
+            printf("channel null? %d\n", clients[i]->channel_subed == NULL);
+            for(int j = 0; j < clients[i]->channel_count; i++){
             if(strcmp(clients[i]->channel_subed[j], req->args[0]) == 0){
                 clientsSubed++;
                 send(clients[i]->fd, req->args[1], strlen(req->args[1]), 0);
             }
         }
+        }
+
     }
     char clientSubedMsg[64];
     snprintf(clientSubedMsg, sizeof(clientSubedMsg), ":%d\r\n", clientsSubed);
