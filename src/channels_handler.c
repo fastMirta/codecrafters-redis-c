@@ -89,7 +89,7 @@ void handle_publish(RespRequest *req, int client_fd){
     
     for(int i = 0; i < MAX_CLIENTS; i++){
         
-        printf("Is null? %d\n", clients[i] == NULL);
+        //printf("Is null? %d\n", clients[i] == NULL);
         if(clients[i]){
             printf("channels count: %d\n", clients[i]->channel_count);
             printf("channel null? %d\n", clients[i]->channel_subed == NULL);
@@ -97,7 +97,7 @@ void handle_publish(RespRequest *req, int client_fd){
             if(strcmp(clients[i]->channel_subed[j], req->args[0]) == 0){
                 clientsSubed++;
                 char publishMsg[1024];
-                snprintf(publishMsg, sizeof(publishMsg), "*3\r\n$7\r\nmessage\r\n$%d\r\n%s\r\n$%d\r\n%s\r\n",
+                snprintf(publishMsg, sizeof(publishMsg), "*3\r\n$7\r\nmessage\r\n$%zd\r\n%s\r\n$%zd\r\n%s\r\n",
                  strlen(req->args[0]), req->args[0], strlen(req->args[1]), req->args[1]);
                 send(clients[i]->fd, publishMsg, strlen(publishMsg), 0);
             }
