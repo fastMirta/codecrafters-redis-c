@@ -138,66 +138,28 @@ void handle_zrank(RespRequest *req, int client_fd){
     printf("\nNot smaller\n");
     char *errorResp = NULL;
     
-    ZSet *sortedSet = NULL;
     Entry *entry = store_getEntry(req->args[0]);
-    
-    if(entry == NULL){
-        sortedSet = calloc(1, sizeof(ZSet));
-        if(sortedSet == NULL){
-            errorResp = "-ERR Out of memory\r\n";
-            if (client_fd != server_config.master_fd)
-                send(client_fd, errorResp, strlen(errorResp), 0);
-            return;
-        }
-    } else {
-        sortedSet = (ZSet*) entry->value;
+    if (entry == NULL || entry->value == NULL) {
+        send(client_fd, "$-1\r\n", 5, 0);
+        return;
     }
     
-    int isExist = 0;
+    ZSet *sortedSet = (ZSet*) entry->value;
     ZSetEntry *ptr = sortedSet->head;
-    ZSetEntry *memberToRank = NULL;
-    for(int i = 0; i < sortedSet->length; i++){
-        if(strcmp(req->args[1], ptr->member) == 0){
-            isExist = 1;
-            memberToRank = ptr;
-        }
-        ptr = ptr->next;
-    }
 
-
-    if(!isExist){
-        printf("Didnt found ya \n");
-        send(client_fd, "$-1\r\n", 5, 0);
-        return;
-    }
-
-    printf("found ya\n");
-    if(sortedSet->head == NULL){
-        printf("found ya but no values");
-        send(client_fd, "$-1\r\n", 5, 0);
-        return;
-    }
-
-    if(sortedSet->length == 1){
-        send(client_fd, ":0\r\n", 4, 0);
-        return;
-    }
-
-    ptr = sortedSet->head;
-    for(int i = 0; i < sortedSet->length; i++){
-        if(ptr->score >= memberToRank->score && strcmp(ptr->member, memberToRank->member) != 0){
-            char rankMsg[1024];
-            snprintf(rankMsg, sizeof(rankMsg), ":%zd\r\n", i);
-            send(client_fd, rankMsg, strlen(rankMsg), 0);
+    for (int i = 0; i < sortedSet->length; i++) {
+        if (ptr == NULL) break;
+        
+        if (strcmp(req->args[1], ptr->member) == 0) {
+            char rankMsg[64];
+            int len = snprintf(rankMsg, sizeof(rankMsg), ":%d\r\n", i);
+            send(client_fd, rankMsg, len, 0);
             return;
         }
-        
         ptr = ptr->next;
     }
-    char lastRank[64];
-    snprintf(lastRank, sizeof(lastRank), ":%zd\r\n", sortedSet->length - 1);
 
-    send(client_fd, lastRank, strlen(lastRank), 0);
+    send(client_fd, "$-1\r\n", 5, 0);
 }
 
 
