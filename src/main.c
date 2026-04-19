@@ -157,17 +157,18 @@ static int recv_and_validate(char *buf, int bufSize, int step) {
     return validate_server_response(step, buf);
 }
 
-static void drain_rdb(char *buf, long long bytesRead) {
+static char* drain_rdb(char *buf, long long bytesRead) {
     char *rdb_start = strchr(buf, '$');
-    if (!rdb_start) return;
+    if (!rdb_start) return buf + bytesRead;
 
     int rdb_len = atoi(rdb_start + 1);
     char *data_start = strstr(rdb_start, "\r\n");
-    if (!data_start) return;
+    if (!data_start) return buf + bytesRead;
 
     data_start += 2;
-    int remaining = rdb_len - (int)((buf + bytesRead) - data_start);
+    char *rdb_end = data_start + rdb_len;
 
+    int remaining = rdb_len - (int)((buf + bytesRead) - data_start);
     while (remaining > 0) {
         char discard[1024];
         int n = recv(server_config.master_fd, discard,
@@ -175,6 +176,8 @@ static void drain_rdb(char *buf, long long bytesRead) {
         if (n <= 0) break;
         remaining -= n;
     }
+
+    return rdb_end;
 }
 
 static void add_master_to_watchlist(struct pollfd *watch_list, int *active_fds) {
@@ -189,30 +192,51 @@ static void add_master_to_watchlist(struct pollfd *watch_list, int *active_fds) 
 }
 
 static void do_slave_handshake(struct pollfd *watch_list, int *active_fds) {
-    char buf[1024];
+    char buf[4096];
 
-    // Step 0: expect PONG
     if (recv_and_validate(buf, sizeof(buf), 0) != 0) {
         printf("Handshake failed at PING step\n");
         return;
     }
     printf("Data received from server: %s\n", buf);
 
-    // Step 1: REPLCONF, expect OK
     handle_replconf(buf, sizeof(buf));
     if (validate_server_response(1, buf) != 0) {
         printf("Handshake failed at REPLCONF step\n");
         return;
     }
 
-    // Step 2: PSYNC, drain RDB
     handle_psync("?", -1);
     long long bytesRead = recv(server_config.master_fd, buf, sizeof(buf) - 1, 0);
     buf[bytesRead] = '\0';
     printf("bytes read: %lld\nresponse to last step: %s\n", bytesRead, buf);
-    drain_rdb(buf, bytesRead);
+
+    char *after_rdb = drain_rdb(buf, bytesRead);
 
     add_master_to_watchlist(watch_list, active_fds);
+
+    // Handle any commands that arrived in the same buffer as the RDB
+    char *end = buf + bytesRead;
+    char *ptr = after_rdb;
+    while (ptr < end) {
+        while (ptr < end && *ptr != '*') ptr++;
+        if (ptr >= end) break;
+
+        char *before = ptr;
+        RespRequest request = {0};
+        int result = parse(&ptr, &request);
+        if (result != 0) {
+            ptr = before + 1;
+            continue;
+        }
+
+        int cmd_byte_len = ptr - before;
+        handle(&request, clients[*active_fds - 1]);
+        server_config.slave_repl_offset += cmd_byte_len;
+
+        for (int a = 0; a < request.argc; a++)
+            free(request.args[a]);
+    }
 }
 
 /**Sends Write cmd to all replica */
