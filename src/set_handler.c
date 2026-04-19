@@ -164,12 +164,6 @@ void handle_zrank(RespRequest *req, int client_fd){
         ptr = ptr->next;
     }
 
-    // ptr = sortedSet->head;
-    // for(int i = 0; i < sortedSet->length; i++){
-    //     printf("member: %s\n", ptr->member);
-    //     ptr = ptr->next
-            
-    // }
 
     if(!isExist){
         printf("Didnt found ya \n");
@@ -189,7 +183,75 @@ void handle_zrank(RespRequest *req, int client_fd){
         return;
     }
 
-    //ZRANK zset_key member_with_score_1
+    ptr = sortedSet->head;
+    for(int i = 0; i < sortedSet->length; i++){
+        if(ptr->score >= memberToRank->score && strcmp(ptr->member, memberToRank->member) != 0){
+            char rankMsg[1024];
+            snprintf(rankMsg, sizeof(rankMsg), ":%zd\r\n", i);
+            send(client_fd, rankMsg, strlen(rankMsg), 0);
+            return;
+        }
+        
+        ptr = ptr->next;
+    }
+    char lastRank[64];
+    snprintf(lastRank, sizeof(lastRank), ":%zd\r\n", sortedSet->length - 1);
+
+    send(client_fd, lastRank, strlen(lastRank), 0);
+}
+
+
+//ZREVRANK:
+/*void handle_zrank(RespRequest *req, int client_fd){
+    if(req->argc < 2){return;}
+    printf("\nNot smaller\n");
+    char *errorResp = NULL;
+    
+    ZSet *sortedSet = NULL;
+    Entry *entry = store_getEntry(req->args[0]);
+    
+    if(entry == NULL){
+        sortedSet = calloc(1, sizeof(ZSet));
+        if(sortedSet == NULL){
+            errorResp = "-ERR Out of memory\r\n";
+            if (client_fd != server_config.master_fd)
+                send(client_fd, errorResp, strlen(errorResp), 0);
+            return;
+        }
+    } else {
+        sortedSet = (ZSet*) entry->value;
+    }
+    
+    int isExist = 0;
+    ZSetEntry *ptr = sortedSet->head;
+    ZSetEntry *memberToRank = NULL;
+    for(int i = 0; i < sortedSet->length; i++){
+        if(strcmp(req->args[1], ptr->member) == 0){
+            isExist = 1;
+            memberToRank = ptr;
+        }
+        ptr = ptr->next;
+    }
+
+
+    if(!isExist){
+        printf("Didnt found ya \n");
+        send(client_fd, "$-1\r\n", 5, 0);
+        return;
+    }
+
+    printf("found ya\n");
+    if(sortedSet->head == NULL){
+        printf("found ya but no values");
+        send(client_fd, "$-1\r\n", 5, 0);
+        return;
+    }
+
+    if(sortedSet->length == 1){
+        send(client_fd, ":0\r\n", 4, 0);
+        return;
+    }
+
     ptr = sortedSet->head;
     for(int i = 0; i < sortedSet->length; i++){
         if(ptr->score >= memberToRank->score && strcmp(ptr->member, memberToRank->member) != 0){
@@ -205,4 +267,4 @@ void handle_zrank(RespRequest *req, int client_fd){
     snprintf(lastRank, sizeof(lastRank), ":%zd\r\n", sortedSet->length - 1);
 
     send(client_fd, lastRank, strlen(lastRank), 0);
-}
+}*/
