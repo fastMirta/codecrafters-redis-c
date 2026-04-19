@@ -126,7 +126,7 @@ void handle_unsubscribe(RespRequest *req, Client* client){
         }
     }
     char unsubMsg[1024];
-    snprintf(unsubMsg, sizeof(unsubMsg), "*3\r\n$11\r\nunsubscribe\r\n$%zd\r\n%s\r\n:%d",
+    snprintf(unsubMsg, sizeof(unsubMsg), "*3\r\n$11\r\nunsubscribe\r\n$%zd\r\n%s\r\n:%d\r\n",
         strlen(req->args[0]), req->args[0], client->channel_count);
     send(client->fd, unsubMsg, strlen(unsubMsg), 0);
 }
