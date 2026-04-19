@@ -96,7 +96,6 @@ void handle_zadd(RespRequest *req, int client_fd){
 void handle_zrank(RespRequest *req, int client_fd){
     if(req->argc < 2){return;}
     printf("\nNot smaller\n");
-    char *errorResp = NULL;
     
     Entry *entry = store_getEntry(req->args[0]);
     if (entry == NULL || entry->value == NULL) {
@@ -120,6 +119,53 @@ void handle_zrank(RespRequest *req, int client_fd){
     }
 
     send(client_fd, "$-1\r\n", 5, 0);
+}
+
+void handle_zrange(RespRequest *req, int client_fd){
+    printf("\n Enter to z range!!!!");
+    printf("argc: %d\n", req->argc);
+    if(req->argc < 3){return;}
+
+    Entry *entry = store_getEntry(req->args[0]);
+    if (entry == NULL || entry->value == NULL) {
+        send(client_fd, "$-1\r\n", 5, 0);
+        return;
+    }
+    
+    ZSet *sortedSet = (ZSet*) entry->value;
+    ZSetEntry *ptr = sortedSet->head;
+
+    int startIndex = atoi(req->args[1]);
+    int endIndex = atoi(req->args[2]);
+    int setLen = sortedSet->length;
+
+    if (startIndex < 0) startIndex += setLen;
+    if (endIndex < 0) endIndex += setLen;
+    
+    if (startIndex < 0) startIndex = 0;
+    if (endIndex >= setLen) endIndex = setLen - 1;
+    if (startIndex > endIndex || startIndex >= setLen) {
+        send(client_fd, "*0\r\n", 4, 0);
+        return;
+    }
+
+    char members[4096];
+
+    for(int i = 0; i < startIndex; i++){
+        ptr = ptr->next;
+    }
+
+    int offset = snprintf(members, sizeof(members), "*%d\r\n", endIndex - startIndex + 1);
+    for(int i = startIndex; i <= endIndex; i++){
+        int written = snprintf(members + offset, sizeof(members) - offset, "$%zd\r\n%s\r\n", strlen(ptr->member), ptr->member);
+        ptr = ptr->next;
+        if (written > 0 && offset + written < sizeof(members)) {
+            offset += written;
+        } else {
+            break;
+        }
+    }
+    send(client_fd, members, offset, 0);
 }
 
 

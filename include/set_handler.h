@@ -9,5 +9,6 @@
 
 void handle_zadd(RespRequest *req, int client_fd);
 void handle_zrank(RespRequest *req, int client_fd);
+void handle_zrange(RespRequest *req, int client_fd);
 
 #endif
