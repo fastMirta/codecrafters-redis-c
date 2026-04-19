@@ -27,7 +27,7 @@ int zset_remove(ZSet *sortedSet, const char *member) {
 
 void zset_add(ZSet *sortedSet, double score, const char *member) {
     ZSetEntry *newNode = malloc(sizeof(ZSetEntry));
-    if (!newNode) return; 
+    if (!newNode) return;
 
     newNode->member = strdup(member);
     newNode->score = score;
@@ -36,9 +36,16 @@ void zset_add(ZSet *sortedSet, double score, const char *member) {
     ZSetEntry *curr = sortedSet->head;
     ZSetEntry *prev = NULL;
 
-    while (curr != NULL && curr->score < score) {
-        prev = curr;
-        curr = curr->next;
+    while (curr != NULL) {
+        if (curr->score < score) {
+            prev = curr;
+            curr = curr->next;
+        } else if (curr->score == score && strcmp(curr->member, member) < 0) {
+            prev = curr;
+            curr = curr->next;
+        } else {
+            break;
+        }
     }
 
     if (prev == NULL) {
