@@ -8,5 +8,6 @@
 
 void handle_subscribe(RespRequest *req, Client *client);
 void handle_publish(RespRequest *req, int client_fd);
+void handle_unsubscribe(RespRequest *req, Client* client);
 
 #endif

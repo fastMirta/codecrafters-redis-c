@@ -109,3 +109,24 @@ void handle_publish(RespRequest *req, int client_fd){
     snprintf(clientSubedMsg, sizeof(clientSubedMsg), ":%d\r\n", clientsSubed);
     send(client_fd, clientSubedMsg, strlen(clientSubedMsg), 0);
 }
+
+void handle_unsubscribe(RespRequest *req, Client* client){
+    if(req->argc < 1){
+        printf("arguments less than 1\n");
+        return;
+    }
+    printf("argc bigger or equal to 1\n");
+    printf("channels: %d\n", client->channel_count);
+    for(int i = 0; i < client->channel_count; i++){
+        printf("client channel: %s\n", client->channel_subed[i]);
+        printf("args[0]: %s\n", req->args[0]);
+        if(strcmp(client->channel_subed[i], req->args[0]) == 0){
+            client->channel_count--;
+            client->channel_subed[i] = NULL;
+        }
+    }
+    char unsubMsg[1024];
+    snprintf(unsubMsg, sizeof(unsubMsg), "*3\r\n$11\r\nunsubscribe\r\n$%zd\r\n%s\r\n:%d",
+        strlen(req->args[0]), req->args[0], client->channel_count);
+    send(client->fd, unsubMsg, strlen(unsubMsg), 0);
+}

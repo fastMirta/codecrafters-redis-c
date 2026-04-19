@@ -73,6 +73,7 @@ typedef enum {
     //pub/sub
     SUBSCRIBE,
     PUBLISH,
+    UNSUBSCRIBE,
     
 
 } REDIS_CMDS;

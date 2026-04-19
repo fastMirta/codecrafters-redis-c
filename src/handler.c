@@ -801,6 +801,10 @@ int handle(RespRequest *req, Client *client) {
         handle_publish(req, client->fd);
         return 0;
     }
+    if(req->command == UNSUBSCRIBE){
+        handle_unsubscribe(req, client);
+        return 0;
+    }
         
     // Default: UNKNOWN
     printf("Data: %s", req->args[0]);
