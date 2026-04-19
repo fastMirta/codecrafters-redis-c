@@ -83,7 +83,7 @@ void handle_publish(RespRequest *req){
     //TODO: change to hash map for faster reading
     for(int i = 0; i < MAX_CLIENTS; i++){
         for(int j = 0; j < clients[i]->channel_count; i++){
-            if(strcmp(clients[i]->channel_subed[j], req->args[1]) == 0){
+            if(strcmp(clients[i]->channel_subed[j], req->args[0]) == 0){
                 send(clients[i]->fd, req->args[1], strlen(req->args[1]), 0);
             }
         }
