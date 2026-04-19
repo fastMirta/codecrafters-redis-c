@@ -1,6 +1,6 @@
 #include "channels_handler.h"
 
-
+Channels *channels[MAX_CLIENTS];
 
 void get_channels(RespRequest *req, char *buffer, int sizeOfBuffer){
     printf("req->argc < 1? %d\n", req->argc < 1);
@@ -21,6 +21,21 @@ void get_channels(RespRequest *req, char *buffer, int sizeOfBuffer){
     }
     printf("End of cha cha cha channel\n");
     
+}
+
+void add_subscriber(ChannelsList *list, int fd) {
+    ChannelEntry *new_entry = malloc(sizeof(ChannelEntry));
+    new_entry->client_fd = fd;
+    new_entry->next = NULL;
+
+    if (list->head == NULL) {
+        list->head = new_entry;
+        list->tail = new_entry;
+    } else {
+        list->tail->next = new_entry;
+        list->tail = new_entry;
+    }
+    list->length++;
 }
 
 void handle_subscribe(RespRequest *req, Client *client){
@@ -65,7 +80,12 @@ void handle_subscribe(RespRequest *req, Client *client){
 }
 
 void handle_publish(RespRequest *req){
+    //TODO: change to hash map for faster reading
     for(int i = 0; i < MAX_CLIENTS; i++){
-        
+        for(int j = 0; j < clients[i]->channel_count; i++){
+            if(strcmp(clients[i]->channel_subed[j], req->args[1]) == 0){
+                send(clients[i]->fd, req->args[1], strlen(req->args[1]), 0);
+            }
+        }
     }
 }

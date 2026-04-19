@@ -11,7 +11,7 @@
 #define MAX_CLIENTS 100
 #define MAX_QUEUED_CMDS 100
 
-typedef struct Client {
+typedef struct Client{
     int fd;
     int is_blocked;
     int is_queued;
@@ -27,6 +27,24 @@ typedef struct Client {
     RespRequest *requests[MAX_QUEUED_CMDS];
     int queuedCommands;
 } Client;
+
+
+
+typedef struct ChannelEntry {
+    int client_fd;       
+    struct ChannelEntry *next;
+} ChannelEntry;
+
+typedef struct {
+    ChannelEntry *head;
+    ChannelEntry *tail;  
+    size_t length;
+} ChannelsList;
+
+typedef struct Channels {
+    char *key;
+    void *value;
+} Channels;
 
 typedef struct {
     int port;
@@ -47,6 +65,7 @@ typedef struct {
 
 extern RedisConfig server_config;
 extern Client *clients[MAX_CLIENTS];
+extern Channels *channels[MAX_CLIENTS];
 
 
 

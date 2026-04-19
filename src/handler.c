@@ -797,6 +797,10 @@ int handle(RespRequest *req, Client *client) {
         handle_subscribe(req, client);
         return 0;
     }
+    if(req->command == PUBLISH){
+        handle_publish(req);
+        return 0;
+    }
         
     // Default: UNKNOWN
     printf("Data: %s", req->args[0]);
