@@ -199,7 +199,7 @@ void handle_zscore(RespRequest *req, int client_fd){
         if(strcmp(req->args[1], ptr->member) == 0){
             char memberScore[128];
             char scoreLength[64];
-            snprintf(scoreLength, sizeof(scoreLength), "%lf", ptr->score);
+            snprintf(scoreLength, sizeof(scoreLength), "%.17g", ptr->score);
             snprintf(memberScore, sizeof(memberScore), "$%zd\r\n%s\r\n", strlen(scoreLength), scoreLength);
             send(client_fd, memberScore, strlen(memberScore), 0);
             return;
