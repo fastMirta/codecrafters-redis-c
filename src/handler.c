@@ -798,7 +798,7 @@ int handle(RespRequest *req, Client *client) {
         return 0;
     }
     if(req->command == PUBLISH){
-        handle_publish(req);
+        handle_publish(req, client->fd);
         return 0;
     }
         

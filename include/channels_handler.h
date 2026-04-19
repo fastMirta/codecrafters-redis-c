@@ -7,6 +7,6 @@
 #include "handler.h"
 
 void handle_subscribe(RespRequest *req, Client *client);
-void handle_publish(RespRequest *req);
+void handle_publish(RespRequest *req, int client_fd);
 
 #endif
