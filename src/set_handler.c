@@ -1,6 +1,9 @@
 #include "set_handler.h"
 
-
+#define GEO_LAT_MIN -85.05112878
+#define GEO_LAT_MAX  85.05112878
+#define GEO_LAT_RANGE (GEO_LAT_MAX - GEO_LAT_MIN) 
+#define GEO_LON_RANGE 360.0
 
 int zset_remove(ZSet *sortedSet, const char *member) {
     ZSetEntry *curr = sortedSet->head;
@@ -339,11 +342,12 @@ void handle_zrem(RespRequest *req, int client_fd) {
 /**Validates longtitude and latitude @return 1 for valid 0 for invalid */
 int validate_geoadd(double longtitude, double latitude){
     int validateLongtitude = longtitude <= 180 && longtitude >= -180;
-    //-85.05112878° to +85.05112878°
     int validateLatitude = latitude <= 85.05112878 && latitude >= -85.05112878;
+
     printf("long valid: %d\n", validateLongtitude);
     printf("lati valid: %d\n", validateLatitude);
     printf("valid geo: %d\n", validateLongtitude && validateLatitude);
+
     return(validateLongtitude && validateLatitude);
 }
 
@@ -379,8 +383,9 @@ void handle_geoadd(RespRequest *req, int client_fd){
                 return;
             }
 
-            double norm_lon = (longitude + 180.0) / 360.0;
-            double norm_lat = (latitude  +  85.05112878) / 170.10225756;
+            
+            double norm_lon = (longitude + 180.0) / GEO_LON_RANGE;
+            double norm_lat = (latitude - GEO_LAT_MIN) / GEO_LAT_RANGE;
 
             // Step 2: scale to 2^26 buckets (26 bits per axis = 52 bits total)
             uint64_t x = (uint64_t)(norm_lon * (1ULL << 26));
@@ -417,8 +422,11 @@ void handle_geoadd(RespRequest *req, int client_fd){
         return;
     }
 
-    double norm_lon = (longitude + 180.0) / 360.0;
-    double norm_lat = (latitude  +  85.05112878) / 170.10225756;
+
+
+    double norm_lon = (longitude + 180.0) / GEO_LON_RANGE;
+    double norm_lat = (latitude - GEO_LAT_MIN) / GEO_LAT_RANGE;
+    
 
     // Step 2: scale to 2^26 buckets (26 bits per axis = 52 bits total)
     uint64_t x = (uint64_t)(norm_lon * (1ULL << 26));
