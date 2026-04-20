@@ -334,6 +334,18 @@ void handle_zrem(RespRequest *req, int client_fd) {
     send(client_fd, lastRank, strlen(lastRank), 0);
 }*/
 
+// ===== GEO spatial helpers =====
+
+/**Validates longtitude and latitude @return 1 for valid 0 for invalid */
+int validate_geoadd(double longtitude, double latitude){
+    int validateLongtitude = longtitude <= 180 && longtitude >= -180;
+    //-85.05112878° to +85.05112878°
+    int validateLatitude = latitude <= 85.05112878 && latitude >= -85.05112878;
+    printf("long valid: %d\n", validateLongtitude);
+    printf("lati valid: %d\n", validateLatitude);
+    printf("valid geo: %d\n", validateLongtitude && validateLatitude);
+    return(validateLongtitude && validateLatitude);
+}
 
 // ===== Geo spatial cmds =====
 
@@ -353,15 +365,24 @@ void handle_geoadd(RespRequest *req, int client_fd){
         
         //Init new args array
         newReq->args[0] = strdup(req->args[0]);
-        for(int i = 0; i < newReq->argc; i++){
-            newReq->args[i] = strdup("");
-        }
+        // for(int i = 0; i < newReq->argc; i++){
+        //     newReq->args[i] = strdup("");
+        // }
         //places -0.0884948 51.506479 "London" long lat member
         // zset_key 1.2 "one"
         int newReqCount = 1;
         for(int i = 1; i < req->argc - 2; i+=3){
             double longitude = atof(req->args[i]); 
             double latitude = atof(req->args[i + 1]);
+
+            if(!validate_geoadd(longitude, latitude)){
+                //ERR invalid longitude,latitude pair 180.000000,90.000000
+                char invalidGeoMsg[1024];
+                snprintf(invalidGeoMsg, sizeof(invalidGeoMsg), "-ERR invalid longitude,latitude pair %.17g,%.17g\r\n",
+                 longitude, latitude);
+                send(client_fd, invalidGeoMsg, strlen(invalidGeoMsg), 0);
+                return;
+            }
 
             double norm_lon = (longitude + 180.0) / 360.0;
             double norm_lat = (latitude  +  85.05112878) / 170.10225756;
@@ -392,6 +413,14 @@ void handle_geoadd(RespRequest *req, int client_fd){
 
     double longitude = atof(req->args[1]); 
     double latitude = atof(req->args[2]);
+
+    if(!validate_geoadd(longitude, latitude)){
+        char invalidGeoMsg[1024];
+        snprintf(invalidGeoMsg, sizeof(invalidGeoMsg), "-ERR invalid longitude,latitude pair %.17g,%.17g\r\n",
+        longitude, latitude);
+        send(client_fd, invalidGeoMsg, strlen(invalidGeoMsg), 0);
+        return;
+    }
 
     double norm_lon = (longitude + 180.0) / 360.0;
     double norm_lat = (latitude  +  85.05112878) / 170.10225756;
