@@ -361,11 +361,11 @@ static uint64_t geo_encode(double longitude, double latitude) {
     double norm_lon = (longitude + 180.0) / 360.0;
     double norm_lat = (latitude + 85.05112878) / 170.10225756;
 
-    uint64_t x = (uint64_t)(norm_lon * (double)(1ULL << 26));
-    uint64_t y = (uint64_t)(norm_lat * (double)(1ULL << 26));
+    uint64_t lat_int = (uint64_t)(norm_lat * (double)(1ULL << 26));
+    uint64_t lon_int = (uint64_t)(norm_lon * (double)(1ULL << 26));
 
     // interleave: lat in even bits, lon in odd bits
-    return (spread64(y) << 1) | spread64(x);
+    return (spread64(lon_int) << 1) | spread64(lat_int);
 }
 
 // ===== Geo spatial cmds =====
