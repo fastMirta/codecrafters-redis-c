@@ -394,8 +394,8 @@ void handle_geoadd(RespRequest *req, int client_fd){
             // Step 3: interleave bits (lon=even bits, lat=odd bits)
             uint64_t hash = 0;
             for (int i = 0; i < 26; i++) {
-                hash |= ((uint64_t)(x >> i) & 1) << (2 * i);      
-                hash |= ((uint64_t)(y >> i) & 1) << (2 * i + 1); 
+                hash |= ((uint64_t)((x >> i) & 1)) << (2 * i);
+                hash |= ((uint64_t)((y >> i) & 1)) << (2 * i + 1);
             }
 
             double score = (double)hash;
@@ -435,8 +435,8 @@ void handle_geoadd(RespRequest *req, int client_fd){
     // Step 3: interleave bits (lon=even bits, lat=odd bits)
     uint64_t hash = 0;
     for (int i = 0; i < 26; i++) {
-        hash |= ((uint64_t)(x >> i) & 1) << (2 * i);      
-        hash |= ((uint64_t)(y >> i) & 1) << (2 * i + 1); 
+        hash |= ((uint64_t)((x >> i) & 1)) << (2 * i);
+        hash |= ((uint64_t)((y >> i) & 1)) << (2 * i + 1);
     }
 
     double score = (double)hash;
