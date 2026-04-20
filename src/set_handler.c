@@ -361,15 +361,10 @@ void handle_geoadd(RespRequest *req, int client_fd){
                 send(client_fd, errorResp, strlen(errorResp), 0);
             return;
         }
+
         newReq->argc = req->argc / 3;
-        
-        //Init new args array
         newReq->args[0] = strdup(req->args[0]);
-        // for(int i = 0; i < newReq->argc; i++){
-        //     newReq->args[i] = strdup("");
-        // }
-        //places -0.0884948 51.506479 "London" long lat member
-        // zset_key 1.2 "one"
+
         int newReqCount = 1;
         for(int i = 1; i < req->argc - 2; i+=3){
             double longitude = atof(req->args[i]); 
@@ -388,14 +383,14 @@ void handle_geoadd(RespRequest *req, int client_fd){
             double norm_lat = (latitude  +  85.05112878) / 170.10225756;
 
             // Step 2: scale to 2^26 buckets (26 bits per axis = 52 bits total)
-            uint64_t x = (uint64_t)(norm_lon * (1 << 26));
-            uint64_t y = (uint64_t)(norm_lat * (1 << 26));
+            uint64_t x = (uint64_t)(norm_lon * (1ULL << 26));
+            uint64_t y = (uint64_t)(norm_lat * (1ULL << 26));
 
             // Step 3: interleave bits (lon=even bits, lat=odd bits)
             uint64_t hash = 0;
             for (int i = 0; i < 26; i++) {
-                hash |= ((x >> i) & 1) << (2 * i);      
-                hash |= ((y >> i) & 1) << (2 * i + 1); 
+                hash |= ((uint64_t)(x >> i) & 1) << (2 * i);      
+                hash |= ((uint64_t)(y >> i) & 1) << (2 * i + 1); 
             }
 
             double score = (double)hash;
@@ -426,14 +421,14 @@ void handle_geoadd(RespRequest *req, int client_fd){
     double norm_lat = (latitude  +  85.05112878) / 170.10225756;
 
     // Step 2: scale to 2^26 buckets (26 bits per axis = 52 bits total)
-    uint64_t x = (uint64_t)(norm_lon * (1 << 26));
-    uint64_t y = (uint64_t)(norm_lat * (1 << 26));
+    uint64_t x = (uint64_t)(norm_lon * (1ULL << 26));
+    uint64_t y = (uint64_t)(norm_lat * (1ULL << 26));
 
     // Step 3: interleave bits (lon=even bits, lat=odd bits)
     uint64_t hash = 0;
     for (int i = 0; i < 26; i++) {
-        hash |= ((x >> i) & 1) << (2 * i);      
-        hash |= ((y >> i) & 1) << (2 * i + 1); 
+        hash |= ((uint64_t)(x >> i) & 1) << (2 * i);      
+        hash |= ((uint64_t)(y >> i) & 1) << (2 * i + 1); 
     }
 
     double score = (double)hash;
