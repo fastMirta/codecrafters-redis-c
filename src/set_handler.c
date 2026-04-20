@@ -1,9 +1,5 @@
 #include "set_handler.h"
 
-#define GEO_LAT_MIN -85.05112878
-#define GEO_LAT_MAX  85.05112878
-#define GEO_LAT_RANGE (GEO_LAT_MAX - GEO_LAT_MIN) 
-#define GEO_LON_RANGE 360.0
 
 int zset_remove(ZSet *sortedSet, const char *member) {
     ZSetEntry *curr = sortedSet->head;
@@ -340,7 +336,7 @@ void handle_zrem(RespRequest *req, int client_fd) {
 // ===== GEO spatial helpers =====
 
 /**Validates longtitude and latitude @return 1 for valid 0 for invalid */
-int validate_geoadd(double longtitude, double latitude){
+static int validate_geoadd(double longtitude, double latitude){
     int validateLongtitude = longtitude <= 180 && longtitude >= -180;
     int validateLatitude = latitude <= 85.05112878 && latitude >= -85.05112878;
 
@@ -349,6 +345,27 @@ int validate_geoadd(double longtitude, double latitude){
     printf("valid geo: %d\n", validateLongtitude && validateLatitude);
 
     return(validateLongtitude && validateLatitude);
+}
+
+static uint64_t spread64(uint64_t v) {
+    v &= 0xFFFFFFFF;
+    v = (v | (v << 16)) & 0x0000FFFF0000FFFF;
+    v = (v | (v <<  8)) & 0x00FF00FF00FF00FF;
+    v = (v | (v <<  4)) & 0x0F0F0F0F0F0F0F0F;
+    v = (v | (v <<  2)) & 0x3333333333333333;
+    v = (v | (v <<  1)) & 0x5555555555555555;
+    return v;
+}
+
+static uint64_t geo_encode(double longitude, double latitude) {
+    double norm_lon = (longitude + 180.0) / 360.0;
+    double norm_lat = (latitude + 85.05112878) / 170.10225756;
+
+    uint64_t x = (uint64_t)(norm_lon * (double)(1ULL << 26));
+    uint64_t y = (uint64_t)(norm_lat * (double)(1ULL << 26));
+
+    // interleave: lat in even bits, lon in odd bits
+    return (spread64(y) << 1) | spread64(x);
 }
 
 // ===== Geo spatial cmds =====
@@ -384,21 +401,7 @@ void handle_geoadd(RespRequest *req, int client_fd){
             }
 
             
-            double norm_lon = (longitude + 180.0) / GEO_LON_RANGE;
-            double norm_lat = (latitude - GEO_LAT_MIN) / GEO_LAT_RANGE;
-
-            // Step 2: scale to 2^26 buckets (26 bits per axis = 52 bits total)
-            uint64_t x = (uint64_t)(norm_lon * (1ULL << 26));
-            uint64_t y = (uint64_t)(norm_lat * (1ULL << 26));
-
-            // Step 3: interleave bits (lon=even bits, lat=odd bits)
-            uint64_t hash = 0;
-            for (int i = 0; i < 26; i++) {
-                hash |= ((uint64_t)((x >> i) & 1)) << (2 * i);
-                hash |= ((uint64_t)((y >> i) & 1)) << (2 * i + 1);
-            }
-
-            double score = (double)hash;
+            double score = (double)geo_encode(longitude, latitude);
             char scoreBuffer[64];
             int scoreLen = snprintf(scoreBuffer, sizeof(scoreBuffer), "%.17g", score);
                 
@@ -423,23 +426,7 @@ void handle_geoadd(RespRequest *req, int client_fd){
     }
 
 
-
-    double norm_lon = (longitude + 180.0) / GEO_LON_RANGE;
-    double norm_lat = (latitude - GEO_LAT_MIN) / GEO_LAT_RANGE;
-    
-
-    // Step 2: scale to 2^26 buckets (26 bits per axis = 52 bits total)
-    uint64_t x = (uint64_t)(norm_lon * (1ULL << 26));
-    uint64_t y = (uint64_t)(norm_lat * (1ULL << 26));
-
-    // Step 3: interleave bits (lon=even bits, lat=odd bits)
-    uint64_t hash = 0;
-    for (int i = 0; i < 26; i++) {
-        hash |= ((uint64_t)((x >> i) & 1)) << (2 * i);
-        hash |= ((uint64_t)((y >> i) & 1)) << (2 * i + 1);
-    }
-
-    double score = (double)hash;
+    double score = (double)geo_encode(longitude, latitude);
     strcpy(req->args[2], req->args[3]);
     req->args[3] = NULL;
     req->argc--;
