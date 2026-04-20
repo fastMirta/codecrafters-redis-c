@@ -71,6 +71,7 @@ typedef enum {
     ZCARD,
     ZSCORE,
     ZREM,
+    GEOADD,
 
     // Stream cmds
     XADD,

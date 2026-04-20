@@ -179,6 +179,7 @@ REDIS_CMDS findRedisCmd(char *cmdName) {
     if (strcmp(cmdName, "ZRANGE") == 0) return ZRANGE;
     if (strcmp(cmdName, "ZCARD") == 0) return ZCARD;
     if (strcmp(cmdName, "ZSCORE") == 0) return ZSCORE;
+    if (strcmp(cmdName, "GEOADD") == 0) return GEOADD;
 
     // Sub/Pub cmds 
     if (strcmp(cmdName, "SUBSCRIBE") == 0) return SUBSCRIBE;
