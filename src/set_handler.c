@@ -464,8 +464,8 @@ void handle_geopos(RespRequest *req, int client_fd) {
         ZSetEntry *memberEntry = getMember(req->args[i], sortedSet->head);
         
         if (memberEntry == NULL) {
-            offset += snprintf(msg + offset, sizeof(msg) - offset, "$-1\r\n");
-            continue;
+            send(client_fd, "*-1\r\n", 5, 0);
+            return;
         }
 
         uint64_t hash = (uint64_t)memberEntry->score;   
