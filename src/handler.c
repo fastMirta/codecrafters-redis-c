@@ -808,6 +808,10 @@ int handle(RespRequest *req, Client *client) {
         handle_geoadd(req, client->fd);
         return 0;
     }
+    if (req->command == GEOPOS){
+        handle_geopos(req, client->fd);
+        return 0;
+    }
 
     // Stream cmds
     if (req->command == XADD){ 

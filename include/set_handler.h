@@ -14,5 +14,6 @@ void handle_zcard(RespRequest *req, int client_fd);
 void handle_zscore(RespRequest *req, int client_fd);
 void handle_zrem(RespRequest *req, int client_fd);
 void handle_geoadd(RespRequest *req, int client_fd);
+void handle_geopos(RespRequest *req, int client_fd);
 
 #endif

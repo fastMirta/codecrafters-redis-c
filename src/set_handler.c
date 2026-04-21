@@ -333,6 +333,18 @@ void handle_zrem(RespRequest *req, int client_fd) {
     send(client_fd, lastRank, strlen(lastRank), 0);
 }*/
 
+/**@return null for not found member or the entry of the member */
+static ZSetEntry* getMember(char *member, ZSetEntry *head){
+    ZSetEntry *ptr = head;
+    while(ptr != NULL){
+        if(strcmp(ptr->member, member)){
+            return ptr;
+        }
+        ptr = ptr->next;
+    }
+}
+
+
 // ===== GEO spatial helpers =====
 
 /**Validates longtitude and latitude @return 1 for valid 0 for invalid */
@@ -368,69 +380,111 @@ static uint64_t geo_encode(double longitude, double latitude) {
     return (spread64(lon_int) << 1) | spread64(lat_int);
 }
 
+static uint64_t compact64(uint64_t v) {
+    v &= 0x5555555555555555;
+    v = (v | (v >> 1))  & 0x3333333333333333;
+    v = (v | (v >> 2))  & 0x0F0F0F0F0F0F0F0F;
+    v = (v | (v >> 4))  & 0x00FF00FF00FF00FF;
+    v = (v | (v >> 8))  & 0x0000FFFF0000FFFF;
+    v = (v | (v >> 16)) & 0x00000000FFFFFFFF;
+    return v;
+}
+
+static void geo_decode(uint64_t hash, double *longitude, double *latitude) {
+    // lon is in odd bits (bit 1), lat is in even bits (bit 0)
+    uint64_t lon_int = compact64(hash >> 1);
+    uint64_t lat_int = compact64(hash);
+
+    *longitude = ((double)lon_int / (double)(1ULL << 26)) * 360.0 - 180.0;
+    *latitude  = ((double)lat_int / (double)(1ULL << 26)) * 170.10225756 - 85.05112878;
+}
+
 // ===== Geo spatial cmds =====
 
 
 void handle_geoadd(RespRequest *req, int client_fd){
     if(req->argc < 4) return;
 
-    if((req->argc - 1) / 3 > 1){
-        RespRequest *newReq = malloc(sizeof(RespRequest));
-        if(newReq == NULL){
-            char *errorResp = "-ERR Out of memory\r\n";
-            if (client_fd != server_config.master_fd)
-                send(client_fd, errorResp, strlen(errorResp), 0);
+    RespRequest *newReq = malloc(sizeof(RespRequest));
+    if(newReq == NULL){
+        char *errorResp = "-ERR Out of memory\r\n";
+        if (client_fd != server_config.master_fd)
+            send(client_fd, errorResp, strlen(errorResp), 0);
+        return;
+    }
+
+    newReq->args[0] = strdup(req->args[0]);
+    int newReqCount = 1;
+
+    for(int i = 1; i < req->argc - 2; i += 3){
+        double longitude = atof(req->args[i]);
+        double latitude  = atof(req->args[i + 1]);
+
+        if(!validate_geoadd(longitude, latitude)){
+            char invalidGeoMsg[1024];
+            snprintf(invalidGeoMsg, sizeof(invalidGeoMsg),
+                     "-ERR invalid longitude,latitude pair %.17g,%.17g\r\n",
+                     longitude, latitude);
+            send(client_fd, invalidGeoMsg, strlen(invalidGeoMsg), 0);
+            free(newReq);
             return;
         }
 
-        newReq->argc = req->argc / 3;
-        newReq->args[0] = strdup(req->args[0]);
+        double score = (double)geo_encode(longitude, latitude);
+        char scoreBuffer[64];
+        snprintf(scoreBuffer, sizeof(scoreBuffer), "%.17g", score);
+        newReq->args[newReqCount] = strdup(scoreBuffer);
+        newReq->args[newReqCount + 1] = strdup(req->args[i + 2]);
+        newReqCount += 2;
+    }
 
-        int newReqCount = 1;
-        for(int i = 1; i < req->argc - 2; i+=3){
-            double longitude = atof(req->args[i]); 
-            double latitude = atof(req->args[i + 1]);
+    newReq->argc = newReqCount;
+    handle_zadd(newReq, client_fd);
+}
 
-            if(!validate_geoadd(longitude, latitude)){
-                //ERR invalid longitude,latitude pair 180.000000,90.000000
-                char invalidGeoMsg[1024];
-                snprintf(invalidGeoMsg, sizeof(invalidGeoMsg), "-ERR invalid longitude,latitude pair %.17g,%.17g\r\n",
-                 longitude, latitude);
-                send(client_fd, invalidGeoMsg, strlen(invalidGeoMsg), 0);
-                return;
-            }
 
-            
-            double score = (double)geo_encode(longitude, latitude);
-            char scoreBuffer[64];
-            int scoreLen = snprintf(scoreBuffer, sizeof(scoreBuffer), "%.17g", score);
-                
-            strcpy(newReq->args[newReqCount], scoreBuffer);
-            strcpy(newReq->args[newReqCount + 1], req->args[i + 2]);
-            newReqCount+= 2;
-            
+void handle_geopos(RespRequest *req, int client_fd) {
+    if (req->argc < 2) return;
+
+    Entry *entry = store_getEntry(req->args[0]);
+    if (entry == NULL || entry->value == NULL) {
+        char null_array[32];
+        int len = snprintf(null_array, sizeof(null_array), "*%d\r\n", req->argc - 1);
+        send(client_fd, null_array, len, 0);
+        for (int i = 1; i < req->argc; i++) send(client_fd, "$-1\r\n", 5, 0);
+        return;
+    }
+
+    ZSet *sortedSet = (ZSet*)entry->value;
+    char msg[8192]; 
+    
+    int offset = snprintf(msg, sizeof(msg), "*%d\r\n", req->argc - 1);
+
+    for (int i = 1; i < req->argc; i++) {
+        ZSetEntry *memberEntry = getMember(req->args[i], sortedSet->head);
+        
+        if (memberEntry == NULL) {
+            offset += snprintf(msg + offset, sizeof(msg) - offset, "$-1\r\n");
+            continue;
         }
-        handle_zadd(newReq, client_fd);
-        return;
+
+        uint64_t hash = (uint64_t)memberEntry->score;   
+        double lon, lat;
+        geo_decode(hash, &lon, &lat);
+
+        char lonStr[64], latStr[64];
+        snprintf(lonStr, sizeof(lonStr), "%.17g", lon);
+        snprintf(latStr, sizeof(latStr), "%.17g", lat);
+
+        int written = snprintf(msg + offset, sizeof(msg) - offset, 
+                               "*2\r\n$%zu\r\n%s\r\n$%zu\r\n%s\r\n", 
+                               strlen(lonStr), lonStr, 
+                               strlen(latStr), latStr);
+        
+        if (written > 0) {
+            offset += written;
+        }
     }
-
-    double longitude = atof(req->args[1]); 
-    double latitude = atof(req->args[2]);
-
-    if(!validate_geoadd(longitude, latitude)){
-        char invalidGeoMsg[1024];
-        snprintf(invalidGeoMsg, sizeof(invalidGeoMsg), "-ERR invalid longitude,latitude pair %.17g,%.17g\r\n",
-        longitude, latitude);
-        send(client_fd, invalidGeoMsg, strlen(invalidGeoMsg), 0);
-        return;
-    }
-
-
-    double score = (double)geo_encode(longitude, latitude);
-    strcpy(req->args[2], req->args[3]);
-    req->args[3] = NULL;
-    req->argc--;
-    snprintf(req->args[1], strlen(req->args[1]), "%.17g", score);
-
-    handle_zadd(req , client_fd);
+    
+    send(client_fd, msg, offset, 0);
 }
