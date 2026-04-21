@@ -448,10 +448,7 @@ void handle_geopos(RespRequest *req, int client_fd) {
 
     Entry *entry = store_getEntry(req->args[0]);
     if (entry == NULL || entry->value == NULL) {
-        char null_array[32];
-        int len = snprintf(null_array, sizeof(null_array), "*%d\r\n", req->argc - 1);
-        send(client_fd, null_array, len, 0);
-        for (int i = 1; i < req->argc; i++) send(client_fd, "$-1\r\n", 5, 0);
+        send(client_fd, "$-1\r\n", 5, 0);
         return;
     }
 
