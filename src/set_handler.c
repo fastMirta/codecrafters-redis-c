@@ -459,13 +459,14 @@ void handle_geopos(RespRequest *req, int client_fd) {
 
     for (int i = 1; i < req->argc; i++) {
         ZSetEntry *memberEntry = getMember(req->args[i], sortedSet->head);
-        
         if (memberEntry == NULL) {
-            send(client_fd, "*-1\r\n", 5, 0);
-            return;
+            // null element inline, NOT a full send+return
+            int written = snprintf(msg + offset, sizeof(msg) - offset, "*-1\r\n");
+            if (written > 0) offset += written;
+            continue;  // <-- keep going for the other members
         }
 
-        uint64_t hash = (uint64_t)memberEntry->score;   
+        uint64_t hash = (uint64_t)memberEntry->score;
         double lon, lat;
         geo_decode(hash, &lon, &lat);
 
@@ -473,15 +474,12 @@ void handle_geopos(RespRequest *req, int client_fd) {
         snprintf(lonStr, sizeof(lonStr), "%.17g", lon);
         snprintf(latStr, sizeof(latStr), "%.17g", lat);
 
-        int written = snprintf(msg + offset, sizeof(msg) - offset, 
-                               "*2\r\n$%zu\r\n%s\r\n$%zu\r\n%s\r\n", 
-                               strlen(lonStr), lonStr, 
-                               strlen(latStr), latStr);
-        
-        if (written > 0) {
-            offset += written;
-        }
+        int written = snprintf(msg + offset, sizeof(msg) - offset,
+            "*2\r\n$%zu\r\n%s\r\n$%zu\r\n%s\r\n",
+            strlen(lonStr), lonStr,
+            strlen(latStr), latStr);
+        if (written > 0) offset += written;
     }
-    
+
     send(client_fd, msg, offset, 0);
 }
