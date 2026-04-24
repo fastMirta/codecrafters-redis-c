@@ -708,11 +708,15 @@ int handle(RespRequest *req, Client *client) {
         handle_key(req, client->fd);
         return 0;
     }
-    if (req->command == AUTH || req->command == SELECT || req->command == COMMAND) {
+    if (req->command == SELECT || req->command == COMMAND) {
         send(client->fd, "+OK\r\n", 5, 0);
         return 0; 
     }
 
+    if(req->command == AUTH){
+        handle_auth(req, client);
+        return 0;
+    }
     if(req->command == ACL){
         handle_acl(req, client);
         return 0;

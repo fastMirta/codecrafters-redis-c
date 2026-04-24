@@ -9,6 +9,7 @@
 #include "utils.h"
 
 void handle_acl(RespRequest *req, Client *client);
+void handle_auth(RespRequest *req, Client *client);
 
 
 #endif

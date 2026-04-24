@@ -14,7 +14,6 @@ typedef enum {
     REPLCONF,
     WAIT,
     PSYNC,
-    AUTH,
     SELECT,
     COMMAND,
 
@@ -77,6 +76,7 @@ typedef enum {
     GEOSEARCH,
 
     //Auth
+    AUTH,
     ACL,
 
     // Stream cmds

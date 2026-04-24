@@ -66,3 +66,18 @@ void handle_acl(RespRequest *req, Client *client){
         return;
     }
 }
+
+void handle_auth(RespRequest *req, Client *client){
+    //TODO: add support to the single word auth cmd (only pw)
+    if(req->argc < 2) return;
+
+    sha256_hex(req->args[1], req->args[1]);
+    if(strcmp(client->password, req->args[1]) == 0){
+        send(client->fd, "+OK\r\n", 5, 0);
+        printf("EQUALS\n");
+        return;
+    }
+    
+    
+    send(client->fd, "-WRONGPASS invalid username-password pair or user is disabled\r\n", 63, 0);
+}
