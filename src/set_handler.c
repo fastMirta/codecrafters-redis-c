@@ -87,6 +87,7 @@ void handle_zadd(RespRequest *req, int client_fd){
         sortedSet = (ZSet*) entry->value;
     }
 
+     //TODO: change the logic to 1 for loop instead of an if loop and then for loop
     if((req->argc - 1) / 2 > 1){
         int created = 0;
         for(int i = 1; i < req->argc - 1; i+= 2){
@@ -414,6 +415,7 @@ void handle_geoadd(RespRequest *req, int client_fd){
         return;
     }
 
+    //args[0] = zset key
     newReq->args[0] = strdup(req->args[0]);
     int newReqCount = 1;
 
@@ -472,7 +474,7 @@ void handle_geopos(RespRequest *req, int client_fd) {
             continue;  
         }
 
-        uint64_t hash = (uint64_t)memberEntry->score;
+        uint64_t hash = (uint64_t)llround(memberEntry->score);
         double lon, lat;
         geo_decode(hash, &lon, &lat);
 
