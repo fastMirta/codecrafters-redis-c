@@ -402,6 +402,7 @@ int main(int argc, char *argv[]) {
                     clients[active_fds]->is_blocked = 0;
                     clients[active_fds]->is_queued = 0;
                     clients[active_fds]->queuedCommands = 0;
+                    clients[active_fds]->has_nopass = 1;
 
                     active_fds++;
                     printf("New client joined! active_fds: %d\n", active_fds);

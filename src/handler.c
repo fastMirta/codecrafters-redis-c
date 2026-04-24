@@ -714,7 +714,7 @@ int handle(RespRequest *req, Client *client) {
     }
 
     if(req->command == ACL){
-        handle_acl(req, client->fd);
+        handle_acl(req, client);
         return 0;
     }
     

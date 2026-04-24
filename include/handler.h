@@ -27,6 +27,9 @@ typedef struct Client{
     int channel_count;
     RespRequest *requests[MAX_QUEUED_CMDS];
     int queuedCommands;
+    
+    //Flags section:
+    int has_nopass;
 } Client;
 
 

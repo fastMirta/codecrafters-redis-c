@@ -8,7 +8,7 @@
 #include "handler.h"
 #include "utils.h"
 
-void handle_acl(RespRequest *req, int client_fd);
+void handle_acl(RespRequest *req, Client *client);
 
 
 #endif
