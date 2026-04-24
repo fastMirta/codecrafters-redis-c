@@ -71,8 +71,9 @@ void handle_auth(RespRequest *req, Client *client){
     //TODO: add support to the single word auth cmd (only pw)
     if(req->argc < 2) return;
 
-    sha256_hex(req->args[1], req->args[1]);
-    if(strcmp(client->password, req->args[1]) == 0){
+    char hashed_input[65];;
+    sha256_hex(req->args[1], hashed_input);
+    if(strcmp(client->password, hashed_input) == 0){
         send(client->fd, "+OK\r\n", 5, 0);
         printf("EQUALS\n");
         return;
