@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <math.h>
+#include <openssl/sha.h>
 #include "handler.h"
 #include "utils.h"
 

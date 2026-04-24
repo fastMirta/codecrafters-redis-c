@@ -30,7 +30,7 @@ typedef struct Client{
     
     //Flags section:
     int has_nopass;
-    char *password;
+    char password[65];
 } Client;
 
 
