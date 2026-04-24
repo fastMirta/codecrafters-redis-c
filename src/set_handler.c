@@ -401,7 +401,40 @@ static void geo_decode(uint64_t hash, double *longitude, double *latitude) {
     *latitude  = ((double)(lat_int + 0.5) / (double)(1ULL << 26)) * 170.10225756 - 85.05112878;
 }
 
+/**Calcualtes the distance between 2 points */
+static double haversine_distance(double score1, double score2){
+    uint64_t hash1 = (uint64_t)llround(score1);
+    double lon1, lat1;
+    geo_decode(hash1, &lon1, &lat1);
 
+    uint64_t hash2 = (uint64_t)llround(score2);
+    double lon2, lat2;
+    geo_decode(hash2, &lon2, &lat2);
+
+    //Convert to rad = ang * pi/180
+    lon1 *= M_PI / 180;
+    lat1 *= M_PI / 180;
+
+    lon2 *= M_PI / 180;
+    lat2 *= M_PI / 180;
+
+    printf("lon1: %lf, lat1: %lf, lon2: %lf, lat2: %lf\n", lon1, lat1, lon2, lat2);
+
+    double latDelta = fabs(lat1 - lat2);
+    double lonDelta = fabs(lon1 - lon2);
+    
+    printf("latDelta: %lf, lonDelta: %lf\n", latDelta, lonDelta);
+
+    printf("lonDelta/2: %lf\n", lonDelta/2);
+    printf("latDelta/2: %lf\n", latDelta/2);
+
+    //Haversine equation
+    double a = pow(sin(latDelta/2),2) + cos(lat1) * cos(lat2) * pow(sin(lonDelta/2), 2); //Square of the half-chord length
+    double c = 2 * atan2(sqrt(a), sqrt(1-a)); //center angle
+
+    return EARTH_RAD * c;
+    
+}
 
 // ===== Geo spatial cmds =====
 
@@ -422,20 +455,20 @@ void handle_geoadd(RespRequest *req, int client_fd){
     int newReqCount = 1;
 
     for(int i = 1; i < req->argc - 2; i += 3){
-        double longitude = atof(req->args[i]);
+        double longtitude = atof(req->args[i]);
         double latitude  = atof(req->args[i + 1]);
 
-        if(!validate_geoadd(longitude, latitude)){
+        if(!validate_geoadd(longtitude, latitude)){
             char invalidGeoMsg[1024];
             snprintf(invalidGeoMsg, sizeof(invalidGeoMsg),
                      "-ERR invalid longitude,latitude pair %.17g,%.17g\r\n",
-                     longitude, latitude);
+                     longtitude, latitude);
             send(client_fd, invalidGeoMsg, strlen(invalidGeoMsg), 0);
             free(newReq);
             return;
         }
 
-        double score = (double)geo_encode(longitude, latitude);
+        double score = (double)geo_encode(longtitude, latitude);
         char scoreBuffer[64];
         snprintf(scoreBuffer, sizeof(scoreBuffer), "%.17g", score);
         newReq->args[newReqCount] = strdup(scoreBuffer);
@@ -453,12 +486,7 @@ void handle_geopos(RespRequest *req, int client_fd) {
 
     Entry *entry = store_getEntry(req->args[0]);
     if (entry == NULL || entry->value == NULL) {
-        char msg[4096];
-        int offset = snprintf(msg, sizeof(msg), "*%d\r\n", req->argc - 1);
-        for (int i = 1; i < req->argc; i++) {
-            offset += snprintf(msg + offset, sizeof(msg) - offset, "*-1\r\n");
-        }
-        send(client_fd, msg, offset, 0);
+        send(client_fd, "$-1\r\n", 5, 0);
         return;
     }
 
@@ -503,6 +531,43 @@ void handle_geodist(RespRequest *req, int client_fd){
 
     char *errorResp;
 
+    Entry *entry = store_getEntry(req->args[0]);
+    
+    if(entry == NULL){
+        send(client_fd, "$-1\r\n", 5, 0);  // key doesn't exist
+        return;
+    }
+
+    ZSet *sortedSet = (ZSet*)entry->value;
+    ZSetEntry *member1 = getMember(req->args[1], sortedSet->head);
+    ZSetEntry *member2 = getMember(req->args[2], sortedSet->head);
+
+    if(member1 == NULL || member2 == NULL){
+        errorResp = "-ERR member dont exist\r\n";
+        send(client_fd, errorResp, strlen(errorResp), 0);
+        return;
+    }
+
+    double dis = haversine_distance(member1->score, member2->score);
+    printf("Distance: %17.g\n", dis);
+    printf("Distance2: %lf\n", dis);
+    
+    char disToStr[2048];
+    snprintf(disToStr, sizeof(disToStr), "%.17g", dis);
+    printf("Distance in string: %s\n", disToStr);
+
+    char finalMsg[4096];
+    snprintf(finalMsg, sizeof(finalMsg), "$%zd\r\n%s\r\n", strlen(disToStr), disToStr);
+    printf("Final MSG: %s\n", finalMsg);
+
+    send(client_fd, finalMsg, strlen(finalMsg), 0);
+}
+
+void handle_geosearch(RespRequest *req, int client_fd){
+    if(req->argc < 7) return;
+
+    char *errorResp;
+
     ZSet *sortedSet = NULL;
     Entry *entry = store_getEntry(req->args[0]);
     
@@ -519,55 +584,55 @@ void handle_geodist(RespRequest *req, int client_fd){
         sortedSet = (ZSet*) entry->value;
     }
 
-    ZSetEntry *member1 = getMember(req->args[1], sortedSet->head);
-    ZSetEntry *member2 = getMember(req->args[2], sortedSet->head);
+    //Support more modes in the future
+    char *mode = strdup(req->args[1]);
 
-    if(member1 == NULL || member2 == NULL){
-        errorResp = "-ERR member dont exist\r\n";
-        send(client_fd, errorResp, strlen(errorResp), 0);
-        return;
+    char unit = req->args[6][0];
+    double wantedRange = atof(req->args[5]);
+
+    switch (unit)
+    {
+        case 'm':
+            break;
+        case 'k':
+            wantedRange *= 1000;
+            break;
+        case 'c':
+            wantedRange /= 100;
+            break;
+        default:
+            break;
     }
 
-    uint64_t hash1 = (uint64_t)llround(member1->score);
-    double lon1, lat1;
-    geo_decode(hash1, &lon1, &lat1);
+    double longtitude = atof(req->args[2]);
+    double latitude = atof(req->args[3]);
 
-    uint64_t hash2 = (uint64_t)llround(member2->score);
-    double lon2, lat2;
-    geo_decode(hash2, &lon2, &lat2);
+    double score1 = (double)geo_encode(longtitude, latitude);
 
-    //Convert to rad = ang * pi/180
-    lon1 *= M_PI / 180;
-    lat1 *= M_PI / 180;
+    ZSetEntry *ptr = sortedSet->head;
+    char members[1024];
+    int offset = 0;
+    int membersCount = 0;
+    for(int i = 0; i < sortedSet->length; i++){
+        if(haversine_distance(score1, ptr->score) <= wantedRange){
+            int written = snprintf(members + offset, sizeof(members) - offset, "$%zd\r\n%s\r\n", strlen(ptr->member), ptr->member);
+            if (written > 0 && offset + written < sizeof(members)) {
+                offset += written;
+                membersCount++;
+            } else {
+                break;
+            }
+        }
 
-    lon2 *= M_PI / 180;
-    lat2 *= M_PI / 180;
+        ptr = ptr->next;
+    }
 
-    printf("lon1: %lf, lat1: %lf, lon2: %lf, lat2: %lf\n", lon1, lat1, lon2, lat2);
-
-    double latDelta = fabs(lat1 - lat2);
-    double lonDelta = fabs(lon1 - lon2);
+    if(membersCount != 0){
+        char msgToSend[2048];
+        snprintf(msgToSend, sizeof(msgToSend), "*%d\r\n%s", membersCount, members);
+        send(client_fd, msgToSend, strlen(msgToSend), 0);
+        return;
+    }
     
-    printf("latDelta: %lf, lonDelta: %lf\n", latDelta, lonDelta);
-
-    printf("lonDelta/2: %lf\n", lonDelta/2);
-    printf("latDelta/2: %lf\n", latDelta/2);
-
-    //Haversine equation
-    double a = pow(sin(latDelta/2),2) + cos(lat1) * cos(lat2) * pow(sin(lonDelta/2), 2); //Square of the half-chord length
-    double c = 2 * atan2(sqrt(a), sqrt(1-a)); //center angle
-
-    double dis = EARTH_RAD * c;
-    printf("Distance: %17.g\n", dis);
-    printf("Distance2: %lf\n", dis);
-    
-    char disToStr[2048];
-    snprintf(disToStr, sizeof(disToStr), "%.17g", dis);
-    printf("Distance in string: %s\n", disToStr);
-
-    char finalMsg[4096];
-    snprintf(finalMsg, sizeof(finalMsg), "$%zd\r\n%s\r\n", strlen(disToStr), disToStr);
-    printf("Final MSG: %s\n", finalMsg);
-
-    send(client_fd, finalMsg, strlen(finalMsg), 0);
+    send(client_fd, "*0\r\n", 4, 0);
 }

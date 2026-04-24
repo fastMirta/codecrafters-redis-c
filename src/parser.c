@@ -182,6 +182,7 @@ REDIS_CMDS findRedisCmd(char *cmdName) {
     if (strcmp(cmdName, "GEOADD") == 0) return GEOADD;
     if (strcmp(cmdName, "GEOPOS") == 0) return GEOPOS;
     if (strcmp(cmdName, "GEODIST") == 0) return GEODIST;
+    if (strcmp(cmdName, "GEOSEARCH") == 0) return GEOSEARCH;
 
     // Sub/Pub cmds 
     if (strcmp(cmdName, "SUBSCRIBE") == 0) return SUBSCRIBE;

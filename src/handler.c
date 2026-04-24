@@ -816,7 +816,11 @@ int handle(RespRequest *req, Client *client) {
         handle_geodist(req, client->fd);
         return 0;
     }
-
+    if (req->command == GEOSEARCH){
+        handle_geosearch(req, client->fd);
+        return 0;
+    }
+    
     // Stream cmds
     if (req->command == XADD){ 
         handle_set(req, TYPE_STREAM, client->fd, client->is_queued);

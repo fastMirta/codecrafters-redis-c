@@ -25,5 +25,6 @@ void handle_zrem(RespRequest *req, int client_fd);
 void handle_geoadd(RespRequest *req, int client_fd);
 void handle_geopos(RespRequest *req, int client_fd);
 void handle_geodist(RespRequest *req, int client_fd);
+void handle_geosearch(RespRequest *req, int client_fd);
 
 #endif
