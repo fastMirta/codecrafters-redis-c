@@ -20,7 +20,7 @@ void handle_getuser(RespRequest *req, Client *client){
         }
         else{
             char buffer[1026];
-            snprintf(buffer, sizeof(buffer), "*4\r\n$5\r\nflags\r\n*1\r\n$6\r\nnopass\r\n$9\r\npasswords\r\n*1\r\n$%zd\r\n%s\r\n",
+            snprintf(buffer, sizeof(buffer), "*4\r\n$5\r\nflags\r\n*0\r\n$9\r\npasswords\r\n*1\r\n$%zd\r\n%s\r\n",
             strlen(client->password), client->password);
 
             send(client->fd, buffer, strlen(buffer), 0);
