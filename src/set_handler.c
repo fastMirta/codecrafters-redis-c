@@ -87,7 +87,7 @@ void handle_zadd(RespRequest *req, int client_fd){
         sortedSet = (ZSet*) entry->value;
     }
 
-     //TODO: change the logic to 1 for loop instead of an if loop and then for loop
+    //TODO: change the logic to 1 for loop instead of an if loop and then for loop
     if((req->argc - 1) / 2 > 1){
         int created = 0;
         for(int i = 1; i < req->argc - 1; i+= 2){
@@ -397,9 +397,11 @@ static void geo_decode(uint64_t hash, double *longitude, double *latitude) {
     uint64_t lon_int = compact64(hash >> 1);
     uint64_t lat_int = compact64(hash);
 
-    *longitude = ((double)lon_int / (double)(1ULL << 26)) * 360.0 - 180.0;
-    *latitude  = ((double)lat_int / (double)(1ULL << 26)) * 170.10225756 - 85.05112878;
+    *longitude = ((double)(lon_int + 0.5) / (double)(1ULL << 26)) * 360.0 - 180.0;
+    *latitude  = ((double)(lat_int + 0.5) / (double)(1ULL << 26)) * 170.10225756 - 85.05112878;
 }
+
+
 
 // ===== Geo spatial cmds =====
 
