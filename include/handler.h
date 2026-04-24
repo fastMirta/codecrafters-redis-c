@@ -29,6 +29,7 @@ typedef struct Client{
     int queuedCommands;
     
     //Flags section:
+    int is_auth;
     int has_nopass;
     char password[65];
 } Client;

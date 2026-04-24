@@ -54,7 +54,10 @@ void handle_setuser(RespRequest *req, Client *client){
 void handle_acl(RespRequest *req, Client *client){
     toUpper(req->args[0]);
     if(strcmp(req->args[0], "WHOAMI") == 0){
-        send(client->fd, "$7\r\ndefault\r\n", 13, 0);
+        client->is_auth
+        ? send(client->fd, "$7\r\ndefault\r\n", 13, 0)
+        : send(client->fd, "-ERR NOAUTH Authentication required.\r\n", 38, 0);
+        
         return;
     }
     if(strcmp(req->args[0], "GETUSER") == 0){
@@ -63,6 +66,7 @@ void handle_acl(RespRequest *req, Client *client){
     }
     if(strcmp(req->args[0], "SETUSER") == 0){
         handle_setuser(req, client);
+        client->is_auth = 1;
         return;
     }
 }
