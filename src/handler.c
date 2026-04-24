@@ -10,6 +10,7 @@
 #include "rdb_handler.h"
 #include "channels_handler.h"
 #include "set_handler.h"
+#include "auth_handler.h"
 
 
 
@@ -711,6 +712,12 @@ int handle(RespRequest *req, Client *client) {
         send(client->fd, "+OK\r\n", 5, 0);
         return 0; 
     }
+
+    if(req->command == ACL){
+        handle_acl(req, client->fd);
+        return 0;
+    }
+    
 
     //rdb cmds
     if(req->command == CONFIG_GET){

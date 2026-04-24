@@ -125,6 +125,8 @@ REDIS_CMDS findRedisCmd(char *cmdName) {
     if (strcmp(cmdName, "AUTH") == 0) return AUTH;
     if (strcmp(cmdName, "SELECT") == 0) return SELECT;
     if (strcmp(cmdName, "COMMAND") == 0) return COMMAND;
+    
+    if (strcmp(cmdName, "ACL") == 0) return ACL;
 
     // Core cmds (Generic)
     if (strcmp(cmdName, "SET") == 0) return SET;

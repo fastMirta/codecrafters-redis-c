@@ -14,6 +14,7 @@ set(SOURCE_FILES
     src/rdb_handler.c
     src/channels_handler.c
     src/set_handler.c
+    src/auth_handler.c
     
 )
 

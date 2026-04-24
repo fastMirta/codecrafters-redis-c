@@ -76,6 +76,9 @@ typedef enum {
     GEODIST,
     GEOSEARCH,
 
+    //Auth
+    ACL,
+
     // Stream cmds
     XADD,
     XREAD,
