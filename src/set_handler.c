@@ -493,3 +493,81 @@ void handle_geopos(RespRequest *req, int client_fd) {
 
     send(client_fd, msg, offset, 0);
 }
+
+
+/**Calculates  distance from two points and sends the distance to client
+ * if 1 or 2 members dont exist sends error
+ */
+void handle_geodist(RespRequest *req, int client_fd){
+    if(req->argc < 3) return;
+
+    char *errorResp;
+
+    ZSet *sortedSet = NULL;
+    Entry *entry = store_getEntry(req->args[0]);
+    
+    if(entry == NULL){
+        sortedSet = calloc(1, sizeof(ZSet));
+        if(sortedSet == NULL){
+            errorResp = "-ERR Out of memory\r\n";
+            if (client_fd != server_config.master_fd)
+                send(client_fd, errorResp, strlen(errorResp), 0);
+            return;
+        }
+        store_set_zset(req->args[0], sortedSet);
+    } else {
+        sortedSet = (ZSet*) entry->value;
+    }
+
+    ZSetEntry *member1 = getMember(req->args[1], sortedSet->head);
+    ZSetEntry *member2 = getMember(req->args[2], sortedSet->head);
+
+    if(member1 == NULL || member2 == NULL){
+        errorResp = "-ERR member dont exist\r\n";
+        send(client_fd, errorResp, strlen(errorResp), 0);
+        return;
+    }
+
+    uint64_t hash1 = (uint64_t)llround(member1->score);
+    double lon1, lat1;
+    geo_decode(hash1, &lon1, &lat1);
+
+    uint64_t hash2 = (uint64_t)llround(member2->score);
+    double lon2, lat2;
+    geo_decode(hash2, &lon2, &lat2);
+
+    //Convert to rad = ang * pi/180
+    lon1 *= M_PI / 180;
+    lat1 *= M_PI / 180;
+
+    lon2 *= M_PI / 180;
+    lat2 *= M_PI / 180;
+
+    printf("lon1: %lf, lat1: %lf, lon2: %lf, lat2: %lf\n", lon1, lat1, lon2, lat2);
+
+    double latDelta = fabs(lat1 - lat2);
+    double lonDelta = fabs(lon1 - lon2);
+    
+    printf("latDelta: %lf, lonDelta: %lf\n", latDelta, lonDelta);
+
+    printf("lonDelta/2: %lf\n", lonDelta/2);
+    printf("latDelta/2: %lf\n", latDelta/2);
+
+    //Haversine equation
+    double a = pow(sin(latDelta/2),2) + cos(lat1) * cos(lat2) * pow(sin(lonDelta/2), 2); //Square of the half-chord length
+    double c = 2 * atan2(sqrt(a), sqrt(1-a)); //center angle
+
+    double dis = EARTH_RAD * c;
+    printf("Distance: %17.g\n", dis);
+    printf("Distance2: %lf\n", dis);
+    
+    char disToStr[2048];
+    snprintf(disToStr, sizeof(disToStr), "%.17g", dis);
+    printf("Distance in string: %s\n", disToStr);
+
+    char finalMsg[4096];
+    snprintf(finalMsg, sizeof(finalMsg), "$%zd\r\n%s\r\n", strlen(disToStr), disToStr);
+    printf("Final MSG: %s\n", finalMsg);
+
+    send(client_fd, finalMsg, strlen(finalMsg), 0);
+}

@@ -17,7 +17,7 @@ void handle_config(RespRequest *req, int client_fd){
     if(req->command == CONFIG_GET){
         toUpper(req->args[0]);
         printf("Print after got upper\n");
-        char directoryBuffer[1024];
+        char directoryBuffer[2048];
         printf("after setting buffer\n");
         if(strcmp(req->args[0], "DIR") == 0){
             
@@ -40,7 +40,7 @@ void handle_config(RespRequest *req, int client_fd){
 }
 
 int read_rdb_file(char **keys, int max_keys){
-    char full_path[1024];
+    char full_path[2048];
     snprintf(full_path, sizeof(full_path), "%s/%s", server_config.rdb_directory, server_config.rdb_name);
     FILE *rdb = fopen(full_path, "rb");
 
@@ -289,7 +289,7 @@ fail:
 
 
 int load_rdb_into_table(void) {
-    char full_path[1024];
+    char full_path[2048];
     snprintf(full_path, sizeof(full_path), "%s/%s",
              server_config.rdb_directory, server_config.rdb_name);
 

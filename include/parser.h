@@ -73,6 +73,7 @@ typedef enum {
     ZREM,
     GEOADD,
     GEOPOS,
+    GEODIST,
 
     // Stream cmds
     XADD,
