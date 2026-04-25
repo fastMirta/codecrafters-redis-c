@@ -771,7 +771,8 @@ int handle(RespRequest *req, Client *client) {
 
     // List cmds
     if (req->command == LPUSH) { 
-        handle_set(req, TYPE_LIST, client->fd, client->is_queued);
+        //TODO: add block for is_queue
+        handle_lpush(req, client->fd);
         return 0; 
     }
     if (req->command == RPUSH) { 
