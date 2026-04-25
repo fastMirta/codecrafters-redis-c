@@ -62,7 +62,6 @@ typedef struct List{
     char **values;
     size_t size;
     size_t capacity;
-    size_t current;
 } List;
 
 

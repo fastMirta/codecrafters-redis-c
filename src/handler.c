@@ -780,6 +780,10 @@ int handle(RespRequest *req, Client *client) {
     }
     if (req->command == LPOP)  { return 0; }
     if (req->command == RPOP)  { return 0; }
+    if (req->command == LRANGE) {
+        handle_lrange(req, client->fd);
+        return 0;
+    }
 
     // Hash cmds
     if (req->command == HSET)    { return 0; }

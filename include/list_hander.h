@@ -8,5 +8,6 @@
 #include "utils.h"
 
 void handle_rpush(RespRequest *req, int client_fd);
+void handle_lrange(RespRequest *req, int client_fd);
 
 #endif

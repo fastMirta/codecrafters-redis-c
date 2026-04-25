@@ -11,7 +11,6 @@ void handle_rpush(RespRequest *req, int client_fd){
     if(entry == NULL || entry->value == NULL){
         list = calloc(1, sizeof(List));
         list->size = 0;
-        list->current = 0;
         list->capacity = req->argc - 1;
         list->values = malloc(list->capacity * sizeof(char *));
 
@@ -25,19 +24,70 @@ void handle_rpush(RespRequest *req, int client_fd){
     }
     else{
         list = (List*)(entry->value);
-        list->values = realloc(list->values, (list->current + req->argc - 1) * sizeof(char *));
+        list->values = realloc(list->values, (list->size + req->argc - 1) * sizeof(char *));
     }
 
     for(int i = 1; i < req->argc; i++){
-        list->values[list->current] = strdup(req->args[i]);
-        list->current++;
+        list->values[list->size] = strdup(req->args[i]);
+        list->size++;
     }
     
-    list->size += list->current;
     char addMsg[1024];
-    snprintf(addMsg, sizeof(addMsg), ":%zd\r\n", list->current);
+    snprintf(addMsg, sizeof(addMsg), ":%zd\r\n", list->size);
 
     printf("addMsg: %s\n", addMsg);
     send(client_fd, addMsg, strlen(addMsg), 0);
     
+}
+
+void handle_lrange(RespRequest *req, int client_fd){
+    if(req->argc < 3) return;
+
+    List *list = NULL;
+    Entry *entry = store_getEntry(req->args[0]);
+
+    if(entry == NULL || entry->value == NULL){
+        send(client_fd, "*0\r\n", 4, 0);
+        return;
+    }
+    else{
+        list = (List*)entry->value;
+    }
+
+    int startIndex = atoi(req->args[1]);
+    int endIndex = atoi(req->args[2]);
+
+    printf("startIndex: %d, endIndex: %d\n", startIndex, endIndex);
+    printf("startIndex > endIndex %d\n", startIndex > endIndex);
+    if(startIndex >= list->size || startIndex > endIndex){
+        send(client_fd, "*0\r\n", 4, 0);
+        return;
+    }
+
+    if(startIndex == endIndex){
+        char value[1024];
+        snprintf(value, sizeof(value), "*1\r\n$%zd\r\n%s\r\n", strlen(list->values[startIndex]), list->values[startIndex]);
+
+        send(client_fd, value, strlen(value), 0);
+        return;
+    }
+
+    if(endIndex > list->size){
+        endIndex = list->size;
+    }
+
+    char listValue[2048];
+    int offset = snprintf(listValue, sizeof(listValue), "*%d\r\n", endIndex - startIndex + 1);
+    for(int i = startIndex; i <= endIndex; i++){
+        int written = snprintf(listValue + offset, sizeof(listValue) - offset, "$%zd\r\n%s\r\n",
+         strlen(list->values[i]), list->values[i]);
+
+        if (written > 0 && offset + written < sizeof(listValue)) {
+            offset += written;
+        } else {
+            break;
+        }
+    }
+
+    send(client_fd, listValue, strlen(listValue), 0);
 }
