@@ -54,10 +54,10 @@ void handle_setuser(RespRequest *req, Client *client){
 void handle_acl(RespRequest *req, Client *client){
     toUpper(req->args[0]);
     if(strcmp(req->args[0], "WHOAMI") == 0){
-        int is_authed = client->is_auth || client->has_nopass;
+        int is_authed = client->is_auth || !client->has_nopass;
         is_authed
-        ? send(client->fd, "$7\r\ndefault\r\n", 13, 0)
-        : send(client->fd, "-NOAUTH Authentication required.\r\n", 34, 0);
+        ? (send(client->fd, "$7\r\ndefault\r\n", 13, 0), printf("sent default\n"), printRequest(req))
+        : (send(client->fd, "-NOAUTH Authentication required.\r\n", 34, 0), printf("sent noauth error\n"), printRequest(req));
         
         return;
     }
