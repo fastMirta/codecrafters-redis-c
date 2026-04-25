@@ -779,7 +779,10 @@ int handle(RespRequest *req, Client *client) {
         handle_rpush(req, client->fd);
         return 0;
     }
-    if (req->command == LPOP)  { return 0; }
+    if (req->command == LPOP)  { 
+        handle_lpop(req, client->fd);    
+        return 0;
+    }
     if (req->command == RPOP)  { return 0; }
     if (req->command == LRANGE) {
         handle_lrange(req, client->fd);

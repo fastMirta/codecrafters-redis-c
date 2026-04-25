@@ -11,5 +11,6 @@ void handle_rpush(RespRequest *req, int client_fd);
 void handle_lpush(RespRequest *req, int client_fd);
 void handle_lrange(RespRequest *req, int client_fd);
 void handle_llen(RespRequest *req, int client_fd);
+void handle_lpop(RespRequest *req, int client_fd);
 
 #endif

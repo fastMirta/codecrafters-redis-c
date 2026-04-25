@@ -152,6 +152,7 @@ void handle_lrange(RespRequest *req, int client_fd){
 }
 
 
+/**Sends the client the length of the given list */
 void handle_llen(RespRequest *req, int client_fd){
     if(req->argc < 1) return;
 
@@ -171,5 +172,97 @@ void handle_llen(RespRequest *req, int client_fd){
     snprintf(listLength, sizeof(listLength), ":%zd\r\n", list->size);
 
     send(client_fd, listLength, strlen(listLength), 0);
+
+}
+
+
+void printList(List *list){
+    printf("Size: %zd\n", list->size);
+    for(int i = 0; i < list->size; i++){
+        printf("value[%d] = %s\n", i, list->values[i]);
+    }
+}
+
+void handle_lpop(RespRequest *req, int client_fd){
+    if(req->argc < 1) return;
+
+    List *list = NULL;
+    Entry *entry = store_getEntry(req->args[0]);
+
+    if(entry == NULL || entry->value == NULL){
+        printf("DEBUG: doesnt exist or value is null\n");
+        send(client_fd, "$-1\r\n", 4, 0);
+        return;
+    }
+    else{
+        list = (List*)entry->value;
+    }
+
+    if(list->values == NULL || list->values[0] == NULL){
+        send(client_fd, "*0\r\n", 4, 0);
+        return;
+    }
+
+    char deletedValues[2048];
+
+    if(req->argc == 2){
+        int count = atoi(req->args[1]);
+        printf("count: %d\n", count);
+
+        if(count == 0 && strcmp("0", req->args[1]) == 0){
+            return;
+        }
+
+        if(count == 0){
+            send(client_fd, "*0\r\n", 4, 0);
+            return;
+        }
+
+        if(count < 0){
+            send(client_fd, "-ERR value is out of range, must be positive", 44, 0);
+            return;
+        }
+
+        if(count > list->size){
+            count = list->size;
+        }
+
+        
+        int offset = snprintf(deletedValues, sizeof(deletedValues), "*%d\r\n", count);
+        for(int i = count; i < list->size; i++){
+            int written = snprintf(deletedValues + offset, sizeof(deletedValues) - offset, "$%zd\r\n%s\r\n",
+             strlen(list->values[i]), list->values[i]);
+
+            if (written > 0 && offset + written < sizeof(deletedValues)) {
+                offset += written;
+            }
+            else {
+                break;
+            }
+        }
+
+        printList(list);
+
+        list->size -= count;
+        // shift existing elements count to the left
+        for(int i = 0; i < list->size - count; i++){
+            list->values[i] = list->values[i + count];
+        }
+        
+
+        printList(list);
+    }
+    else{
+        snprintf(deletedValues, sizeof(deletedValues), "$%zd\r\n%s\r\n", strlen(list->values[0]), list->values[0]);
+
+        // shift existing elements 1 to the left
+        for(int i = 0; i < list->size - 1; i--){
+            list->values[i] = list->values[i + 1];
+        }
+        list->size--;
+    }
+
+
+    send(client_fd, deletedValues, strlen(deletedValues), 0);
 
 }
