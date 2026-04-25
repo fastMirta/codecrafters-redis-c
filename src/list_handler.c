@@ -183,32 +183,62 @@ void handle_llen(RespRequest *req, int client_fd){
 }
 
 
-
-
 void handle_lpop(RespRequest *req, int client_fd){
     if(req->argc < 1) return;
-
     List *list = NULL;
     Entry *entry = store_getEntry(req->args[0]);
-
     if(entry == NULL || entry->value == NULL){
-        printf("DEBUG: doesnt exist or value is null\n");
-        send(client_fd, "$-1\r\n", 4, 0);
+        send(client_fd, "$-1\r\n", 5, 0);
         return;
     }
-    else{
-        list = (List*)entry->value;
-    }
-
-    if(list->values == NULL || list->values[0] == NULL){
+    list = (List*)entry->value;
+    if(list->size == 0){
         send(client_fd, "*0\r\n", 4, 0);
         return;
     }
 
     char deletedValues[2048];
-
     if(req->argc == 2){
         int count = atoi(req->args[1]);
+        if(count < 0){
+            send(client_fd, "-ERR value is out of range, must be positive\r\n", 46, 0);
+            return;
+        }
+        if(count == 0){
+            send(client_fd, "*0\r\n", 4, 0);
+            return;
+        }
+        if(count > (int)list->size) count = list->size;
+
+        int offset = snprintf(deletedValues, sizeof(deletedValues), "*%d\r\n", count);
+        for(int i = 0; i < count; i++){
+            int written = snprintf(deletedValues + offset, sizeof(deletedValues) - offset,
+                "$%zd\r\n%s\r\n", strlen(list->values[i]), list->values[i]);
+            if(written > 0) offset += written;
+        }
+        send(client_fd, deletedValues, offset, 0);
+
+        // shift left
+        for(int i = 0; i < (int)list->size - count; i++){
+            list->values[i] = list->values[i + count];
+        }
+        list->size -= count;
+        return;
+    }
+
+    // single pop
+    snprintf(deletedValues, sizeof(deletedValues), "$%zd\r\n%s\r\n",
+        strlen(list->values[0]), list->values[0]);
+    send(client_fd, deletedValues, strlen(deletedValues), 0);
+    for(int i = 0; i < (int)list->size - 1; i++){
+        list->values[i] = list->values[i + 1];
+    }
+    list->size--;
+}
+
+/**
+ * Multiple RPOP
+ *         int count = atoi(req->args[1]);
         printf("count: %d\n", count);
 
         if(count == 0 && strcmp("0", req->args[1]) == 0){
@@ -253,18 +283,4 @@ void handle_lpop(RespRequest *req, int client_fd){
         
 
         printList(list);
-    }
-    else{
-        snprintf(deletedValues, sizeof(deletedValues), "$%zd\r\n%s\r\n", strlen(list->values[0]), list->values[0]);
-
-        // shift existing elements 1 to the left
-        for(int i = 0; i < list->size - 1; i++){
-            list->values[i] = list->values[i + 1];
-        }
-        list->size--;
-    }
-
-
-    send(client_fd, deletedValues, strlen(deletedValues), 0);
-
-}
+ */
