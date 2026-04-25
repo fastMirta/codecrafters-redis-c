@@ -1,5 +1,12 @@
 #include "list_hander.h"
 
+void printList(List *list){
+    printf("Size: %zd\n", list->size);
+    for(int i = 0; i < list->size; i++){
+        printf("value[%d] = %s\n", i, list->values[i]);
+    }
+}
+
 void handle_rpush(RespRequest *req, int client_fd){
     if(req->argc < 2){
         send(client_fd, "-ERR wrong number of arguments for 'rpush' command\r\n", 52, 0);
@@ -126,7 +133,7 @@ void handle_lrange(RespRequest *req, int client_fd){
     if(startIndex == endIndex){
         char value[1024];
         snprintf(value, sizeof(value), "*1\r\n$%zd\r\n%s\r\n", strlen(list->values[startIndex]), list->values[startIndex]);
-
+        printList(list);
         send(client_fd, value, strlen(value), 0);
         return;
     }
@@ -147,7 +154,7 @@ void handle_lrange(RespRequest *req, int client_fd){
             break;
         }
     }
-
+    printList(list);
     send(client_fd, listValue, strlen(listValue), 0);
 }
 
@@ -176,12 +183,7 @@ void handle_llen(RespRequest *req, int client_fd){
 }
 
 
-void printList(List *list){
-    printf("Size: %zd\n", list->size);
-    for(int i = 0; i < list->size; i++){
-        printf("value[%d] = %s\n", i, list->values[i]);
-    }
-}
+
 
 void handle_lpop(RespRequest *req, int client_fd){
     if(req->argc < 1) return;
@@ -256,7 +258,7 @@ void handle_lpop(RespRequest *req, int client_fd){
         snprintf(deletedValues, sizeof(deletedValues), "$%zd\r\n%s\r\n", strlen(list->values[0]), list->values[0]);
 
         // shift existing elements 1 to the left
-        for(int i = 0; i < list->size - 1; i--){
+        for(int i = 0; i < list->size - 1; i++){
             list->values[i] = list->values[i + 1];
         }
         list->size--;
