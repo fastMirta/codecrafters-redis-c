@@ -11,7 +11,7 @@
 #include "channels_handler.h"
 #include "set_handler.h"
 #include "auth_handler.h"
-
+#include "list_hander.h"
 
 
 extern Client *clients[MAX_CLIENTS];
@@ -774,7 +774,10 @@ int handle(RespRequest *req, Client *client) {
         handle_set(req, TYPE_LIST, client->fd, client->is_queued);
         return 0; 
     }
-    if (req->command == RPUSH) { return 0; }
+    if (req->command == RPUSH) { 
+        handle_rpush(req, client->fd);
+        return 0;
+    }
     if (req->command == LPOP)  { return 0; }
     if (req->command == RPOP)  { return 0; }
 

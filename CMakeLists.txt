@@ -15,6 +15,7 @@ set(SOURCE_FILES
     src/channels_handler.c
     src/set_handler.c
     src/auth_handler.c
+    src/list_handler.c
     
 )
 

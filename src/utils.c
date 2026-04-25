@@ -39,6 +39,22 @@ int validate_set_stream(int index){
     return(table[index]->type != TYPE_STREAM);
 }
 
+void store_set_list(char *key, List *list){
+    int index = hash(key);
+    if (table[index] == NULL)
+        table[index] = malloc(sizeof(Entry));
+    else{
+        free(table[index]->key);
+        free(table[index]->value);
+    }
+    table[index]->key = strdup(key);
+    table[index]->value = list;
+    table[index]->expires_at = 0;
+    table[index]->type = TYPE_LIST;
+    printf("\n");
+    printf("SUCCESS IN SET LIST \n");
+}
+
 void store_set_stream(char *key, Stream *stream){
     int index = hash(key);
     if (table[index] == NULL)

@@ -57,10 +57,20 @@ typedef struct {
     size_t length;          
 } ZSet;
 
+
+typedef struct List{
+    char **values;
+    size_t size;
+    size_t capacity;
+    size_t current;
+} List;
+
+
 extern Entry *table[TABLE_SIZE];
 
 void toUpper(char *str);
 int hash(char *key);
+void store_set_list(char *key, List *list);
 void store_set_stream(char *key, Stream *stream);
 void store_set_zset(char *key, ZSet *zSet);
 void store_set(char *key, void *value, TIME_FLAGS flag, int seconds, RedisType type);

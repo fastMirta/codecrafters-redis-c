@@ -1,0 +1,12 @@
+#ifndef LIST_HANDLER_H
+#define LIST_HANDLER_H
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include "handler.h"
+#include "utils.h"
+
+void handle_rpush(RespRequest *req, int client_fd);
+
+#endif
