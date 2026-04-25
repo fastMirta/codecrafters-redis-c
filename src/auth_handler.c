@@ -54,7 +54,8 @@ void handle_setuser(RespRequest *req, Client *client){
 void handle_acl(RespRequest *req, Client *client){
     toUpper(req->args[0]);
     if(strcmp(req->args[0], "WHOAMI") == 0){
-        client->is_auth
+        int is_authed = client->is_auth || client->has_nopass;
+        is_authed
         ? send(client->fd, "$7\r\ndefault\r\n", 13, 0)
         : send(client->fd, "-NOAUTH Authentication required.\r\n", 34, 0);
         
@@ -86,3 +87,4 @@ void handle_auth(RespRequest *req, Client *client){
     
     send(client->fd, "-WRONGPASS invalid username-password pair or user is disabled\r\n", 63, 0);
 }
+
