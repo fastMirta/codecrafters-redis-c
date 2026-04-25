@@ -47,6 +47,7 @@ void handle_lrange(RespRequest *req, int client_fd){
     Entry *entry = store_getEntry(req->args[0]);
 
     if(entry == NULL || entry->value == NULL){
+        printf("DEBUG: doesnt exist or value is null\n");
         send(client_fd, "*0\r\n", 4, 0);
         return;
     }
@@ -59,6 +60,18 @@ void handle_lrange(RespRequest *req, int client_fd){
 
     printf("startIndex: %d, endIndex: %d\n", startIndex, endIndex);
     printf("startIndex > endIndex %d\n", startIndex > endIndex);
+
+    if(abs(startIndex) > list->size){
+        startIndex = 0;
+    }
+    if(abs(endIndex) > list->size){
+        startIndex = 0;
+    }
+
+    //Handle neg index cases
+    if(startIndex < 0) startIndex = list->size - abs(startIndex);
+    if(endIndex < 0) endIndex = list->size - abs(endIndex);
+
     if(startIndex >= list->size || startIndex > endIndex){
         send(client_fd, "*0\r\n", 4, 0);
         return;
