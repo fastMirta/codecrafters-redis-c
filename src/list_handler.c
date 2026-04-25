@@ -152,3 +152,24 @@ void handle_lrange(RespRequest *req, int client_fd){
 }
 
 
+void handle_llen(RespRequest *req, int client_fd){
+    if(req->argc < 1) return;
+
+    List *list = NULL;
+    Entry *entry = store_getEntry(req->args[0]);
+
+    if(entry == NULL || entry->value == NULL){
+        printf("DEBUG: doesnt exist or value is null\n");
+        send(client_fd, ":0\r\n", 4, 0);
+        return;
+    }
+    else{
+        list = (List*)entry->value;
+    }
+
+    char listLength[1024];
+    snprintf(listLength, sizeof(listLength), ":%zd\r\n", list->size);
+
+    send(client_fd, listLength, strlen(listLength), 0);
+
+}

@@ -785,6 +785,10 @@ int handle(RespRequest *req, Client *client) {
         handle_lrange(req, client->fd);
         return 0;
     }
+    if (req->command == LLEN) {
+        handle_llen(req, client->fd);
+        return 0;
+    }
 
     // Hash cmds
     if (req->command == HSET)    { return 0; }
