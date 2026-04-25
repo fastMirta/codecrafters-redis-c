@@ -8,6 +8,9 @@
 #include "handler.h"
 #include "utils.h"
 
+extern int default_has_nopass;
+extern char default_password[65];
+
 void handle_acl(RespRequest *req, Client *client);
 void handle_auth(RespRequest *req, Client *client);
 

@@ -1,5 +1,7 @@
 #include "auth_handler.h"
 
+int default_has_nopass = 1;
+char default_password[65] = {0};
 
 void sha256_hex(const char *input, char *output_hex) {
     unsigned char hash[SHA256_DIGEST_LENGTH]; // 32 bytes
@@ -15,13 +17,13 @@ void sha256_hex(const char *input, char *output_hex) {
 void handle_getuser(RespRequest *req, Client *client){
     toUpper(req->args[1]);
     if(strcmp(req->args[1], "DEFAULT") == 0){
-        if(client->has_nopass){
+        if(default_has_nopass){
             send(client->fd, "*4\r\n$5\r\nflags\r\n*1\r\n$6\r\nnopass\r\n$9\r\npasswords\r\n*0\r\n", 50, 0);
         }
         else{
             char buffer[1026];
             snprintf(buffer, sizeof(buffer), "*4\r\n$5\r\nflags\r\n*0\r\n$9\r\npasswords\r\n*1\r\n$%zd\r\n%s\r\n",
-            strlen(client->password), client->password);
+            strlen(default_password), default_password);
 
             send(client->fd, buffer, strlen(buffer), 0);
         }
@@ -39,10 +41,10 @@ void handle_setuser(RespRequest *req, Client *client){
         send(client->fd, "-ERR bad request sonion\r\n", 25, 0);
         return;
     }
-    client->has_nopass = 0;
+    default_has_nopass = 0;
     toUpper(req->args[1]);
     if(strcmp(req->args[1], "DEFAULT") == 0){
-        sha256_hex(req->args[2] + 1, client->password);
+        sha256_hex(req->args[2] + 1, default_password);
         send(client->fd, "+OK\r\n", 5, 0);
     }
     else{
@@ -54,7 +56,7 @@ void handle_setuser(RespRequest *req, Client *client){
 void handle_acl(RespRequest *req, Client *client){
     toUpper(req->args[0]);
     if(strcmp(req->args[0], "WHOAMI") == 0){
-        int is_authed = client->is_auth || !client->has_nopass;
+        int is_authed = client->is_auth || default_has_nopass;
         is_authed
         ? (send(client->fd, "$7\r\ndefault\r\n", 13, 0), printf("sent default\n"), printRequest(req))
         : (send(client->fd, "-NOAUTH Authentication required.\r\n", 34, 0), printf("sent noauth error\n"), printRequest(req));
@@ -78,7 +80,8 @@ void handle_auth(RespRequest *req, Client *client){
 
     char hashed_input[65];;
     sha256_hex(req->args[1], hashed_input);
-    if(strcmp(client->password, hashed_input) == 0){
+    if(strcmp(default_password, hashed_input) == 0){
+        client->is_auth = 1;
         send(client->fd, "+OK\r\n", 5, 0);
         printf("EQUALS\n");
         return;
