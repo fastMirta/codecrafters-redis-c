@@ -72,8 +72,8 @@ void handle_lrange(RespRequest *req, int client_fd){
         return;
     }
 
-    if(endIndex > list->size){
-        endIndex = list->size;
+    if(endIndex >= list->size){
+        endIndex = list->size - 1;
     }
 
     char listValue[2048];
