@@ -44,9 +44,15 @@ void handle_rpush(RespRequest *req, int client_fd){
         list->values[list->size] = strdup(req->args[i]);
         list->size++;
     }
+    
+    char addMsg[1024];
+    snprintf(addMsg, sizeof(addMsg), ":%zd\r\n", list->size);
+
+    printf("addMsg: %s\n", addMsg);
+    send(client_fd, addMsg, strlen(addMsg), 0);
 
 
-    Client *longestTimeout = NULL;
+        Client *longestTimeout = NULL;
     double currentBiggestTimeOut = 0;
     for(int i = 0; i < MAX_CLIENTS; i++){
         if(clients[i] && clients[i]->is_blpop && clients[i]->is_blocked
@@ -81,12 +87,6 @@ void handle_rpush(RespRequest *req, int client_fd){
         free(longestTimeout->waiting_for_key);
         longestTimeout->waiting_for_key = NULL;
     }
-    
-    char addMsg[1024];
-    snprintf(addMsg, sizeof(addMsg), ":%zd\r\n", list->size);
-
-    printf("addMsg: %s\n", addMsg);
-    send(client_fd, addMsg, strlen(addMsg), 0);
     
 }
 
