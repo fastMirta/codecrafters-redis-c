@@ -6,7 +6,7 @@
 #include "transaction_handler.h"
 
 
-Clients_Watch *watchers[MAX_CLIENTS];
+Clients_Watch *watchers[WATCHERS_SIZE] = {NULL};
 
 /**Increments value of given key only if its a number
  * if key doesnt exist creates one with given param and init as 1
@@ -111,31 +111,35 @@ void handle_discard(RespRequest *req, Client *client){
 void handle_watch(RespRequest *req, Client *client){
     if(req->argc < 1) return;
 
+    //req->args[i] = key
     for(int i = 0; i < req->argc; i++){
-        char *key = NULL;
-        strcpy(key, req->args[i]);
 
-        client->watch_keys[i] = strdup(key);
+        client->watch_keys[client->watch_keys_size] = strdup(req->args[i]);
         client->watch_keys_size++;
 
         //Handles global watchers 
-        int index = hash(key);
+        int index = hash(req->args[i]);
         if(watchers[index] == NULL){
+            printf("entering malloc block\n");
             watchers[index] = malloc(sizeof(Clients_Watch));
-        }
-        else{
-            free(watchers[index]->clientList);
-            free(watchers[index]->key);
+            printf("after first malloc: %p\n", (void*)watchers[index]);
+            watchers[index]->key = malloc(256); 
+            printf("after key malloc: %p\n", (void*)watchers[index]->key);
+            watchers[index]->clientList = malloc(sizeof(Client*) * MAX_CLIENTS); 
+            printf("after clientList malloc: %p\n", (void*)watchers[index]->clientList);
             watchers[index]->clientsSize = 0;
         }
-        
-        strcpy(watchers[index]->key, key);
-        watchers[index]->clientList[watchers[index]->clientsSize] = *client;
+        printf("watchers[index] == NULL %d\n", watchers[index] == NULL);
+
+        //strcpy(watchers[index]->key, req->args[i]);printf("index: %d\n", index);
+        printf("watchers[index]: %p\n", (void*)watchers[index]);
+        printf("watchers[index]->clientList: %p\n", (void*)watchers[index]->clientList);
+        printf("watchers[index]->clientsSize: %zu\n", watchers[index]->clientsSize);
+        printf("client: %p\n", (void*)client);
+        watchers[index]->clientList[watchers[index]->clientsSize] = client;
         watchers[index]->clientsSize++;
         
     }
 
     send(client->fd, "+OK\r\n", 5, 0);
-
-    
 }

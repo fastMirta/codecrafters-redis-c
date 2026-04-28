@@ -9,6 +9,7 @@
 #include "transaction_handler.h"
 
 #define MAX_CLIENTS 100
+#define WATCHERS_SIZE 1024
 #define MAX_QUEUED_CMDS 100
 
 typedef struct Client{
@@ -35,7 +36,7 @@ typedef struct Client{
     int has_nopass;
     char password[65];
 
-    char **watch_keys;
+    char *watch_keys[64];
     size_t watch_keys_size;
 } Client;
 
@@ -76,14 +77,14 @@ typedef struct RedisConfig {
 
 typedef struct Clients_Watch {
     char *key;
-    Client *clientList;
+    Client **clientList;
     size_t clientsSize;
 } Clients_Watch;
 
 extern RedisConfig server_config;
 extern Client *clients[MAX_CLIENTS];
 extern Channels *channels[MAX_CLIENTS];
-extern Clients_Watch *watchers[MAX_CLIENTS];
+extern Clients_Watch *watchers[WATCHERS_SIZE];
 
 
 

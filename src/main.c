@@ -335,6 +335,10 @@ int main(int argc, char *argv[]) {
     // for(int i = 0; i < MAX_CLIENTS; i++){
     //     clients[i]->channel_subed = strdup();
     // }
+    memset(watchers, 0, sizeof(watchers));
+    for(int i = 0; i < WATCHERS_SIZE; i++) {
+            watchers[i] = NULL;
+    }
 
     server_config.wait_client_fd = -1;
     while(1) {
@@ -358,6 +362,7 @@ int main(int argc, char *argv[]) {
             
             handle_endblpop(clients[i]);
         }
+
 
         // Handle WAIT
         if (server_config.wait_client_fd != -1) {
@@ -412,6 +417,9 @@ int main(int argc, char *argv[]) {
                     clients[active_fds]->queuedCommands = 0;
                     clients[active_fds]->is_auth = 0;
                     clients[active_fds]->has_nopass = 1;
+                    
+                    clients[active_fds]->watch_keys_size = 0;
+                    memset(clients[active_fds]->watch_keys, 0, sizeof(clients[active_fds]->watch_keys));
                     //clients[active_fds]->password = "";
 
                     active_fds++;
