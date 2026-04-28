@@ -622,7 +622,10 @@ int handle(RespRequest *req, Client *client) {
 
     printf("\n--- Entered Handler: Command ID %d ---\n", req->command);
 
-    if(client->is_queued && req->command != MULTI && req->command != EXEC && req->command != DISCARD && req->command != WATCH){
+    if(client->is_queued && req->command != MULTI && req->command != EXEC &&
+         req->command != DISCARD && req->command != WATCH
+          && req->command != UNWATCH){
+
         client->requests[client->queuedCommands] = copy_request(req);
         client->queuedCommands++;
         printf("Command is QUEUED for fd %d\n", client->fd);
@@ -648,6 +651,11 @@ int handle(RespRequest *req, Client *client) {
     if(req->command == WATCH){
         handle_watch(req, client);
         printf("Done discarding\n");
+        return 0;
+    }
+    if(req->command == UNWATCH){
+        printf("entering un watch");
+        handle_unwatch(req, client);
         return 0;
     }
 

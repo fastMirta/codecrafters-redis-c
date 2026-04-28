@@ -42,6 +42,7 @@ typedef enum {
     EXEC,
     DISCARD,
     WATCH,
+    UNWATCH,
 
     // List cmds 
     LPUSH,

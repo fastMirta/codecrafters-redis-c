@@ -165,3 +165,24 @@ void handle_watch(RespRequest *req, Client *client){
 
     send(client->fd, "+OK\r\n", 5, 0);
 }
+
+void handle_unwatch(RespRequest *req, Client *client){
+    printf("UNWATCH cmd\n");
+    for(int i = 0; i < client->watch_keys_size; i++){
+
+        int index = hash(client->watch_keys[i]);
+        if(watchers[index] != NULL){
+            for(int j = 0; j < watchers[index]->clientsSize; j++){
+                if(client == watchers[index]->clientList[j]){
+                    watchers[index]->clientList[j] = NULL;
+                    free(client->watch_keys[i]);
+                }
+            }
+        }
+    }
+
+    
+    client->watch_keys_size = 0;
+    send(client->fd, "+OK\r\n", 5, 0);
+    printf("Finished unwatch\n");
+}
