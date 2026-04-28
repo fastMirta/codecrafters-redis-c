@@ -607,6 +607,14 @@ int handle(RespRequest *req, Client *client) {
 
     printf("\n--- Entered Handler: Command ID %d ---\n", req->command);
 
+    if(client->is_queued && req->command != MULTI && req->command != EXEC && req->command != DISCARD && req->command != WATCH){
+        client->requests[client->queuedCommands] = copy_request(req);
+        client->queuedCommands++;
+        printf("Command is QUEUED for fd %d\n", client->fd);
+        send(client->fd, "+QUEUED\r\n", 9, 0);
+        return 0;
+    }
+
     // Transaction cmds
     if(req->command == MULTI){
         handle_multi(req, client);
@@ -622,19 +630,15 @@ int handle(RespRequest *req, Client *client) {
         printf("Done discarding\n");
         return 0;
     }
-        if(req->command == WATCH){
+    if(req->command == WATCH){
         handle_watch(req, client);
         printf("Done discarding\n");
         return 0;
     }
 
-    if(client->is_queued){
-        client->requests[client->queuedCommands] = copy_request(req);
-        client->queuedCommands++;
-        printf("Command is QUEUED for fd %d\n", client->fd);
-        send(client->fd, "+QUEUED\r\n", 9, 0);
-        return 0;
-    }
+
+
+    //if(client->)
 
     if(client->is_subscribed && req->command != SUBSCRIBE && req->command != UNSUBSCRIBE && req->command != PING){
         //ERR Can't execute 'echo': only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context

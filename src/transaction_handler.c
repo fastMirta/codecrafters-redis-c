@@ -111,6 +111,11 @@ void handle_discard(RespRequest *req, Client *client){
 void handle_watch(RespRequest *req, Client *client){
     if(req->argc < 1) return;
 
+    if(client->is_queued){
+        send(client->fd, "-ERR WATCH inside MULTI is not allowed\r\n", 40, 0);
+        return;
+    }
+
     //req->args[i] = key
     for(int i = 0; i < req->argc; i++){
 
