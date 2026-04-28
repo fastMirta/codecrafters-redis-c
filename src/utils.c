@@ -35,6 +35,7 @@ int validate_set(char *key, void *value, RedisType type){
     // }
 }
 
+
 int validate_set_stream(int index){
     return(table[index]->type != TYPE_STREAM);
 }
@@ -165,6 +166,50 @@ Entry *store_getEntry(char *key){
         
     return table[index];
 }
+
+/**Checks if the type (1 of the core type e.g. string, list etc) has values
+ * @return 1 for false 0 for true
+*/
+int hasValue(RedisType type, char *key){
+    Entry *entry = store_getEntry(key);
+    switch (type)
+    {
+        case TYPE_STRING:
+            //TODO: implement type string
+            return 0;
+
+        case TYPE_LIST:
+            Entry *entry = store_getEntry(key);
+            if(entry == NULL || entry->value == NULL){
+                return 1;
+            }
+            List *list = (List*)entry->value;
+            printf("list->size < 0) %d\n", list->size < 0);
+            return (list->size < 0);
+
+        case TYPE_STREAM:
+            if(entry == NULL || entry->value == NULL){
+                return 1;
+            }
+
+            Stream *stream = (Stream*)entry->value;
+            printf("stream->length < 0 %d\n", stream->length < 0);
+            return (stream->length < 0);
+
+        case TYPE_ZSET:
+            if(entry == NULL || entry->value == NULL){
+                return 1;
+            }
+
+            ZSet *sortedSet = (ZSet*)entry->value;
+            printf("stream->length < 0 %d\n", sortedSet->length < 0);
+            return (sortedSet->length < 0);
+        default:
+            break;
+    }
+}
+
+
 
 StreamEntry* lastStreamEntry(char *key){
     Entry *entry = store_getEntry(key);

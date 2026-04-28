@@ -50,6 +50,7 @@ typedef enum {
     RPOP,
     LLEN,
     LRANGE,
+    BLPOP,
 
     // Hash cmds
     HSET,

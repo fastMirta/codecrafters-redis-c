@@ -13,6 +13,7 @@
 #include "parser.h"
 #include "handler.h"
 #include "rdb_handler.h"
+#include "list_hander.h"
 
 RedisConfig server_config;
 Client *clients[MAX_CLIENTS];
@@ -350,6 +351,8 @@ int main(int argc, char *argv[]) {
                 send(watch_list[i].fd, "*-1\r\n", 5, 0);
                 clients[i]->is_blocked = 0;
             }
+            
+            handle_endblpop(clients[i]);
         }
 
         // Handle WAIT
@@ -399,6 +402,7 @@ int main(int argc, char *argv[]) {
 
                     clients[active_fds] = calloc(1, sizeof(Client));
                     clients[active_fds]->fd = new_fd;
+                    clients[active_fds]->is_blpop = 0;
                     clients[active_fds]->is_blocked = 0;
                     clients[active_fds]->is_queued = 0;
                     clients[active_fds]->queuedCommands = 0;

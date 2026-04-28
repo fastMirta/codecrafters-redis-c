@@ -156,6 +156,7 @@ REDIS_CMDS findRedisCmd(char *cmdName) {
     if (strcmp(cmdName, "RPOP") == 0) return RPOP;
     if (strcmp(cmdName, "LLEN") == 0) return LLEN;
     if (strcmp(cmdName, "LRANGE") == 0) return LRANGE;
+    if (strcmp(cmdName, "BLPOP") == 0) return BLPOP;
 
     // Hash cmds (Fixed: H-commands are Hashes, not Lists)
     if (strcmp(cmdName, "HSET") == 0) return HSET;

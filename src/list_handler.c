@@ -44,6 +44,32 @@ void handle_rpush(RespRequest *req, int client_fd){
         list->values[list->size] = strdup(req->args[i]);
         list->size++;
     }
+
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i] && clients[i]->is_blpop && clients[i]->is_blocked
+                && clients[i]->waiting_for_key != NULL
+                && strcmp(clients[i]->waiting_for_key, req->args[0]) == 0) {
+
+            // Deliver the first element
+            char response[1024];
+            snprintf(response, sizeof(response),
+                "*2\r\n$%zu\r\n%s\r\n$%zu\r\n%s\r\n",
+                strlen(req->args[0]), req->args[0],
+                strlen(list->values[0]), list->values[0]);
+            send(clients[i]->fd, response, strlen(response), 0);
+
+            // Shift list left
+            for (int j = 0; j < (int)list->size - 1; j++)
+                list->values[j] = list->values[j + 1];
+            list->size--;
+
+            clients[i]->is_blocked = 0;
+            clients[i]->is_blpop = 0;
+            free(clients[i]->waiting_for_key);
+            clients[i]->waiting_for_key = NULL;
+            break;
+        }
+    }
     
     char addMsg[1024];
     snprintf(addMsg, sizeof(addMsg), ":%zd\r\n", list->size);
@@ -86,6 +112,33 @@ void handle_lpush(RespRequest *req, int client_fd){
         list->values[newCount - i] = strdup(req->args[i]);
     }
     list->size += newCount;
+
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i] && clients[i]->is_blpop && clients[i]->is_blocked
+                && clients[i]->waiting_for_key != NULL
+                && strcmp(clients[i]->waiting_for_key, req->args[0]) == 0) {
+
+            // Deliver the first element
+            char response[1024];
+            snprintf(response, sizeof(response),
+                "*2\r\n$%zu\r\n%s\r\n$%zu\r\n%s\r\n",
+                strlen(req->args[0]), req->args[0],
+                strlen(list->values[0]), list->values[0]);
+            send(clients[i]->fd, response, strlen(response), 0);
+
+            // Shift list right by 1
+            for(int j = list->size - 1; j >= 0; j--){
+                list->values[j + 1] = list->values[j];
+            }
+            list->size--;
+
+            clients[i]->is_blocked = 0;
+            clients[i]->is_blpop = 0;
+            free(clients[i]->waiting_for_key);
+            clients[i]->waiting_for_key = NULL;
+            break;
+        }
+    }
 
     char addMsg[1024];
     snprintf(addMsg, sizeof(addMsg), ":%zd\r\n", list->size);
@@ -236,51 +289,136 @@ void handle_lpop(RespRequest *req, int client_fd){
     list->size--;
 }
 
-/**
- * Multiple RPOP
- *         int count = atoi(req->args[1]);
-        printf("count: %d\n", count);
+//TODO: realloc the list->values to free unused space
+void handle_rpop(RespRequest *req, int client_fd){
+    if(req->argc < 1) return;
 
-        if(count == 0 && strcmp("0", req->args[1]) == 0){
+    List *list = NULL;
+    Entry *entry = store_getEntry(req->args[0]);
+    if(entry == NULL || entry->value == NULL){
+        send(client_fd, "$-1\r\n", 5, 0);
+        return;
+    }
+
+    list = (List*)entry->value;
+    if(list->size == 0){
+        send(client_fd, "*0\r\n", 4, 0);
+        return;
+    }
+
+    char deletedValues[2048];
+    if(req->argc == 2){
+        int count = atoi(req->args[1]);
+        if(count < 0){
+            send(client_fd, "-ERR value is out of range, must be positive\r\n", 46, 0);
             return;
         }
-
         if(count == 0){
             send(client_fd, "*0\r\n", 4, 0);
             return;
         }
+        if(count > (int)list->size) count = list->size;
 
-        if(count < 0){
-            send(client_fd, "-ERR value is out of range, must be positive", 44, 0);
+        int offset = snprintf(deletedValues, sizeof(deletedValues), "*%d\r\n", count);
+
+        // read from end
+        for(int i = list->size - count; i < (int)list->size; i++){
+            int written = snprintf(deletedValues + offset, sizeof(deletedValues) - offset,
+                "$%zd\r\n%s\r\n", strlen(list->values[i]), list->values[i]);
+            if(written > 0) offset += written;
+        }
+        send(client_fd, deletedValues, offset, 0);
+        list->size -= count;
+        return;
+    }
+
+    // single pop from end
+    char single[1024];
+    snprintf(single, sizeof(single), "$%zd\r\n%s\r\n",
+        strlen(list->values[list->size - 1]), list->values[list->size - 1]);
+    send(client_fd, single, strlen(single), 0);
+    list->size--;
+}
+
+
+void handle_blpop(RespRequest *req, Client *client){
+    if(req->argc < 2) return;
+    
+    List *list = NULL;
+    Entry *entry = store_getEntry(req->args[0]);
+    if(entry == NULL || entry->value == NULL){
+        list = calloc(1, sizeof(List));
+        
+        if(list == NULL){
+            send(client->fd, "-ERR Out of memory\r\n", 20, 0);
             return;
         }
 
-        if(count > list->size){
-            count = list->size;
+        list->size = 0;
+        list->capacity = req->argc - 1;
+        list->values = malloc(list->capacity * sizeof(char *));
+
+        if(list->values == NULL){
+            send(client->fd, "-ERR Out of memory\r\n", 20, 0);
+            return;
         }
 
+
+        store_set_list(req->args[0], list);
+    }
+    else{
+        list = (List*)(entry->value);
+        list->values = realloc(list->values, (list->size + req->argc - 1) * sizeof(char *));
+    }
+    
+    if(list->size > 0){
+        char deletedValue[1024];
+         snprintf(deletedValue, sizeof(deletedValue), "*2\r\n$%zd\r\n%s\r\n$%zd\r\n%s\r\n",
+        strlen(req->args[0]), req->args[0], strlen(list->values[0]), list->values[0]);
+
+        printf("vals: %s\n", deletedValue);
+
+        send(client->fd, deletedValue, strlen(deletedValue), 0);
+        for(int i = 0; i < (int)list->size - 1; i++){
+            list->values[i] = list->values[i + 1];
+        }
+        list->size--;
+    }
+    else{
+        int ms = atoi(req->args[req->argc - 1]);
+        client->timeout_at = (ms == 0) ? 0 : get_current_time_ms() + ms;
+        client->is_blpop = 1;
+        client->is_blocked = 1;
+        client->waiting_for_key = strdup(req->args[0]);
+
+        printf("Client waiting for key INIT to: %s\n", client->waiting_for_key);
+    }
+    
+}
+
+
+void handle_endblpop(Client *client){
+    long long now = get_current_time_ms();
+
+    if(client && client->is_blpop
+                    && client->timeout_at != 0
+                    && now >= client->timeout_at){
+                
+        char buffer[1024];
+        Entry *entry = store_getEntry(client->waiting_for_key);
+        List *list = (List*)entry->value;
+        if(hasValue(TYPE_LIST, client->waiting_for_key) == 0){
+            snprintf(buffer, sizeof(buffer), "*2\r\n$%zd\r\n%s\r\n$%zd\r\n%s\r\n",
+            strlen(client->waiting_for_key), client->waiting_for_key, strlen(list->values[0]), list->values[0]);
+
+            send(client->fd, buffer, strlen(buffer), 0);
+        }
+        else{
+            printf("nil in end blpop\n");
+            send(client->fd, "*-1\r\n", 5, 0);
+        }
         
-        int offset = snprintf(deletedValues, sizeof(deletedValues), "*%d\r\n", count);
-        for(int i = count; i < list->size; i++){
-            int written = snprintf(deletedValues + offset, sizeof(deletedValues) - offset, "$%zd\r\n%s\r\n",
-             strlen(list->values[i]), list->values[i]);
-
-            if (written > 0 && offset + written < sizeof(deletedValues)) {
-                offset += written;
-            }
-            else {
-                break;
-            }
-        }
-
-        printList(list);
-
-        list->size -= count;
-        // shift existing elements count to the left
-        for(int i = 0; i < list->size - count; i++){
-            list->values[i] = list->values[i + count];
-        }
-        
-
-        printList(list);
- */
+        client->is_blocked = 0;
+        client->is_blpop = 0;
+    }
+}

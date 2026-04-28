@@ -330,8 +330,8 @@ int load_rdb_into_table(void) {
                 printf("RDB LOADED: key=%s val=%s\n", key, val);
                 store_set(key, val, NO_TIME_FLAG, -1, TYPE_STRING);
                 if (expiry_ms != -1) {
-                    Entry *e = table[hash(key)]; 
-                    if (e) e->expires_at = expiry_ms;
+                    Entry *entry = table[hash(key)]; 
+                    if (entry) entry->expires_at = expiry_ms;
                 }
                 loaded++;
                 free(val);
@@ -345,7 +345,28 @@ int load_rdb_into_table(void) {
             }
             loaded++;
 
-        } else {
+        }
+        //TODO: change to correct value type
+        else if (value_type == 19) {          // ── LIST
+            // List *list = rdb_read_stream(f);
+            // if (!list) { free(key); break; }
+            // store_set_list(key, list);
+            // if (expiry_ms > 0) {
+            //     table[hash(key)]->expires_at = expiry_ms;
+            // }
+            // loaded++;
+
+        }
+        else if (value_type == 19) {          // ── ZSET
+            // ZSet *sortedSet = rdb_read_stream(f);
+            // if (!sortedSet) { free(key); break; }
+            // store_set_zset(key, sortedSet);
+            // if (expiry_ms > 0) {
+            //     table[hash(key)]->expires_at = expiry_ms;
+            // }
+            // loaded++;
+
+        }  else {
             // Unknown/unsupported type skip safely by bailing out.
             fprintf(stderr, "load_rdb: unsupported type 0x%02X for key '%s', stopping\n",
                     value_type, key);

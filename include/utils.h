@@ -86,5 +86,6 @@ void printValue(StreamEntry *entry);
 StreamEntry* lastStreamEntry(char *key);
 int isWriteCmd(REDIS_CMDS cmd);
 char* cmd_to_string(REDIS_CMDS cmdName);
+int hasValue(RedisType type, char *key);
 
 #endif

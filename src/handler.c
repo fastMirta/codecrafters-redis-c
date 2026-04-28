@@ -204,7 +204,7 @@ void generateId(Stream *stream, StreamEntry *streamEntry) {
     streamEntry->id = strdup(idToString);
 }
 
-void handle_set_stream(RespRequest *req, int client_fd, int isQueued){
+void handle_set_stream(RespRequest *req, int client_fd){
     char *errorResp = NULL;
     
     Stream *stream = NULL;
@@ -297,13 +297,13 @@ int get_length(char *array[]){
 }
 
 
-void handle_set(RespRequest *req, RedisType type, int client_fd, int isQueued){
+void handle_set(RespRequest *req, RedisType type, int client_fd){
     if(req->argc < 2){
         printf("length smaller than 2");
         return;
     }
     if(type == TYPE_STREAM){
-        handle_set_stream(req, client_fd, isQueued);
+        handle_set_stream(req, client_fd);
     }
     else if(type == TYPE_ZSET){
         //handle_zadd(req, client_fd);
@@ -335,7 +335,7 @@ void handle_get(RespRequest *req, int client_fd) {
     send(client_fd, response, strlen(response), 0);
 }
 
-void handle_type(RespRequest *req, int client_fd, int isQueued){
+void handle_type(RespRequest *req, int client_fd){
     Entry *entry = store_getEntry(req->args[0]);
     if(entry == NULL){
         send(client_fd, "+none\r\n", 7, 0);
@@ -733,7 +733,7 @@ int handle(RespRequest *req, Client *client) {
     // Core cmds
     if (req->command == SET) {
         printf("Executing SET\n");
-        handle_set(req, TYPE_STRING, client->fd, client->is_queued);
+        handle_set(req, TYPE_STRING, client->fd);
         return 0;
     }
     if (req->command == GET) {
@@ -755,13 +755,13 @@ int handle(RespRequest *req, Client *client) {
     }
     if (req->command == TYPE) {
         printf("Executing TYPE\n");
-        handle_type(req, client->fd, client->is_queued);
+        handle_type(req, client->fd);
         return 0;
     }
 
     // String & Number specific cmds
     if (req->command == INCR){ 
-        handle_incr(req, client->fd, client->is_queued);
+        handle_incr(req, client->fd);
         return 0;
     }
     if (req->command == DECR)   { return 0; }
@@ -790,6 +790,10 @@ int handle(RespRequest *req, Client *client) {
     }
     if (req->command == LLEN) {
         handle_llen(req, client->fd);
+        return 0;
+    } 
+    if (req->command == BLPOP) {
+        handle_blpop(req, client);
         return 0;
     }
 
@@ -849,7 +853,7 @@ int handle(RespRequest *req, Client *client) {
     
     // Stream cmds
     if (req->command == XADD){ 
-        handle_set(req, TYPE_STREAM, client->fd, client->is_queued);
+        handle_set(req, TYPE_STREAM, client->fd);
         return 0;
     }
     if (req->command == XREAD){ 

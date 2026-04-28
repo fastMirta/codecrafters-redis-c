@@ -9,7 +9,7 @@
 /**Increments value of given key only if its a number
  * if key doesnt exist creates one with given param and init as 1
  */
-void handle_incr(RespRequest *req, int client_fd, int isQueued){
+void handle_incr(RespRequest *req, int client_fd){
     Entry *entry = store_getEntry(req->args[0]);
     if(entry == NULL){
         printf("Entry is null my friendos\n");
