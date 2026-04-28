@@ -412,5 +412,7 @@ void handle_endblpop(Client *client){
         
         client->is_blocked = 0;
         client->is_blpop = 0;
+        free(client->waiting_for_key);
+        client->waiting_for_key = NULL;
     }
 }
