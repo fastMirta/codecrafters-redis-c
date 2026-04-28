@@ -309,6 +309,7 @@ int main(int argc, char *argv[]) {
     server_config.master_repl_offset = 0;
     server_config.master_fd = -1;
     server_config.rdb_directory[0] = '\0';
+    strcpy(server_config.rdb_directory, "/app");
     server_config.rdb_name[0] = '\0';
 
     listen(server_fd, 5);
