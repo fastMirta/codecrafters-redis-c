@@ -185,7 +185,7 @@ int hasValue(RedisType type, char *key){
             }
             List *list = (List*)entry->value;
             printf("list->size < 0) %d\n", list->size < 0);
-            return (list->size < 0);
+            return (list->size > 0) ? 0 : 1;
 
         case TYPE_STREAM:
             if(entry == NULL || entry->value == NULL){
@@ -203,7 +203,7 @@ int hasValue(RedisType type, char *key){
 
             ZSet *sortedSet = (ZSet*)entry->value;
             printf("stream->length < 0 %d\n", sortedSet->length < 0);
-            return (sortedSet->length < 0);
+            return (sortedSet->length < 0) ? 0 : 1;
         default:
             break;
     }

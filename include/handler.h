@@ -22,7 +22,7 @@ typedef struct Client{
     int is_waiting;
     long long repl_offset;
     long long timeout_at;
-    int blocked_at;
+    long long blocked_at;
     char *waiting_for_key;
     char *min_id;
     char *channel_subed[64];

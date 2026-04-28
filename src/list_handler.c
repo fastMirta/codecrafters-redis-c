@@ -376,8 +376,8 @@ void handle_blpop(RespRequest *req, Client *client){
     }
     
     // Key doesn't exist or list is empty = block
-    int ms = atoi(req->args[req->argc - 1]);
-    client->timeout_at = (ms == 0) ? 0 : get_current_time_ms() + ms;
+    double sec = atof(req->args[req->argc - 1]);
+    client->timeout_at = (sec == 0.0) ? 0 : get_current_time_ms() + (sec * 1000);
     client->is_blpop = 1;
     client->is_blocked = 1;
     client->blocked_at = get_current_time_ms();
@@ -393,10 +393,13 @@ void handle_endblpop(Client *client){
                     && client->timeout_at != 0
                     && now >= client->timeout_at){
                 
-        char buffer[1024];
-        Entry *entry = store_getEntry(client->waiting_for_key);
-        List *list = (List*)entry->value;
+        
         if(hasValue(TYPE_LIST, client->waiting_for_key) == 0){
+            
+            Entry *entry = store_getEntry(client->waiting_for_key);
+            List *list = (List*)entry->value;
+
+            char buffer[1024];
             snprintf(buffer, sizeof(buffer), "*2\r\n$%zd\r\n%s\r\n$%zd\r\n%s\r\n",
             strlen(client->waiting_for_key), client->waiting_for_key, strlen(list->values[0]), list->values[0]);
 
