@@ -15,10 +15,10 @@ void handle_config(RespRequest *req, int client_fd){
 
     toUpper(req->args[0]);
     if(req->command == CONFIG_GET){
-        toUpper(req->args[0]);
         printf("Print after got upper\n");
         char directoryBuffer[2048];
         printf("after setting buffer\n");
+
         if(strcmp(req->args[0], "DIR") == 0){
             
             //*2\r\n$3\r\ndir\r\n$16\r\n/tmp/redis-files\r\n
@@ -36,6 +36,26 @@ void handle_config(RespRequest *req, int client_fd){
             return;
         }
 
+        if(strcmp(req->args[0], "APPENDONLY") == 0){
+            //TODO: implement logic for appendonly
+            send(client_fd, "*2\r\n$10\r\nappendonly\r\n$2\r\nno\r\n", 29, 0);
+            return;
+        }
+
+        if(strcmp(req->args[0], "APPENDDIRNAME") == 0){
+            send(client_fd, "*2\r\n$13\r\nappenddirname\r\n$13\r\nappendonlydir\r\n", 44, 0);
+            return;
+        }
+        
+        if(strcmp(req->args[0], "APPENDFILENAME") == 0){
+            send(client_fd, "*2\r\n$14\r\nappendfilename\r\n$14\r\nappendonly.aof\r\n", 46, 0);
+            return;
+        }
+
+        if(strcmp(req->args[0], "APPENDFSYNC") == 0){
+            send(client_fd, "*2\r\n$11\r\nappendfsync\r\n$8\r\neverysec\r\n", 36, 0);
+            return;
+        }
     }
 }
 
