@@ -37,7 +37,7 @@ typedef enum {
     STRLEN,
     MGET,
 
-    // Transaction cmds (המיקום המומלץ)
+    // Transaction cmds
     MULTI,
     EXEC,
     DISCARD,

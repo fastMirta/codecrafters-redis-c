@@ -181,7 +181,7 @@ void handle_unwatch(RespRequest *req, Client *client){
         }
     }
 
-    
+    client->is_dirty = 0;
     client->watch_keys_size = 0;
     send(client->fd, "+OK\r\n", 5, 0);
     printf("Finished unwatch\n");
