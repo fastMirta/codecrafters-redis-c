@@ -655,7 +655,7 @@ int handle(RespRequest *req, Client *client) {
     }
     if(req->command == UNWATCH){
         printf("entering un watch");
-        handle_unwatch(req, client);
+        handle_unwatch(client);
         return 0;
     }
 

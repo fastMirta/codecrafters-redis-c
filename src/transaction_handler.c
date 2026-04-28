@@ -8,6 +8,25 @@
 
 Clients_Watch *watchers[WATCHERS_SIZE] = {NULL};
 
+
+/**Deletes all watched keys of client */
+static void delete_watched_keys(Client *client){
+    for(int i = 0; i < client->watch_keys_size; i++){
+
+        int index = hash(client->watch_keys[i]);
+        if(watchers[index] != NULL){
+            for(int j = 0; j < watchers[index]->clientsSize; j++){
+                if(client == watchers[index]->clientList[j]){
+                    watchers[index]->clientList[j] = NULL;
+                    free(client->watch_keys[i]);
+                }
+            }
+        }
+    }
+    client->watch_keys_size = 0;
+    client->is_dirty = 0;
+}
+
 /**Increments value of given key only if its a number
  * if key doesnt exist creates one with given param and init as 1
  */
@@ -73,7 +92,6 @@ void handle_exec(Client *client) {
     if(client->is_dirty){
         printf("YES dirty\n");
 
-        client->is_dirty = 0;
         client->is_queued = 0;
         client->queuedCommands = 0;
         for(int i = 0; i < client->queuedCommands; i++) {
@@ -82,6 +100,8 @@ void handle_exec(Client *client) {
             }
             free(client->requests[i]);
         }
+
+        delete_watched_keys(client);
 
         send(client->fd, "*-1\r\n", 5, 0);
         return;
@@ -119,6 +139,8 @@ void handle_discard(RespRequest *req, Client *client){
     }
     client->queuedCommands = 0;
     client->is_queued = 0;
+
+    delete_watched_keys(client);
 
     send(client->fd, "+OK\r\n", 5, 0);
     
@@ -166,23 +188,11 @@ void handle_watch(RespRequest *req, Client *client){
     send(client->fd, "+OK\r\n", 5, 0);
 }
 
-void handle_unwatch(RespRequest *req, Client *client){
+void handle_unwatch(Client *client){
     printf("UNWATCH cmd\n");
-    for(int i = 0; i < client->watch_keys_size; i++){
 
-        int index = hash(client->watch_keys[i]);
-        if(watchers[index] != NULL){
-            for(int j = 0; j < watchers[index]->clientsSize; j++){
-                if(client == watchers[index]->clientList[j]){
-                    watchers[index]->clientList[j] = NULL;
-                    free(client->watch_keys[i]);
-                }
-            }
-        }
-    }
+    delete_watched_keys(client);
 
-    client->is_dirty = 0;
-    client->watch_keys_size = 0;
     send(client->fd, "+OK\r\n", 5, 0);
     printf("Finished unwatch\n");
 }
