@@ -38,6 +38,7 @@ typedef struct Client{
 
     char *watch_keys[64];
     size_t watch_keys_size;
+    int is_dirty;
 } Client;
 
 

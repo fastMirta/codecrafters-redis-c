@@ -258,9 +258,7 @@ void pass_data_toReplica(RespRequest *req){
 }
 
 int main(int argc, char *argv[]) {
-    double num = 0.0;
-    printf("num == 0 = %d\n", num == 0);
-
+    
     setbuf(stdout, NULL);
     setbuf(stderr, NULL);
     struct pollfd watch_list[MAX_CLIENTS];

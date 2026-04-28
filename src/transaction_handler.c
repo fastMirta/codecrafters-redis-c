@@ -69,6 +69,23 @@ void handle_exec(Client *client) {
         send(client->fd, "-ERR EXEC without MULTI\r\n", 25, 0);
         return;
     }
+    printf("is dirty: %d\n", client->is_dirty);
+    if(client->is_dirty){
+        printf("YES dirty\n");
+
+        client->is_dirty = 0;
+        client->is_queued = 0;
+        client->queuedCommands = 0;
+        for(int i = 0; i < client->queuedCommands; i++) {
+            for(int j = 0; j < client->requests[i]->argc; j++) {
+                free(client->requests[i]->args[j]);
+            }
+            free(client->requests[i]);
+        }
+
+        send(client->fd, "*-1\r\n", 5, 0);
+        return;
+    }
 
     char header[32];
     int headerLen = snprintf(header, sizeof(header), "*%d\r\n", client->queuedCommands);

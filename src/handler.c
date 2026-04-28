@@ -23,6 +23,21 @@ static inline int from_master(Client *client) {
     return client->is_master;
 }
 
+void notify_watchers(char *key) {
+    int index = hash(key);
+    printf("NOTIFYING!!!\n");
+    if (watchers[index] != NULL) {
+        printf("enter if in notify\n");
+        for (int i = 0; i < watchers[index]->clientsSize; i++) {
+            Client *client = watchers[index]->clientList[i];
+            if (client != NULL) {
+                client->is_dirty = 1; 
+                printf("notified client\n");
+            }
+        }
+    }
+}
+
 /**Copy src request to the dest request
  * @return ptr to dest request
  */
@@ -743,6 +758,7 @@ int handle(RespRequest *req, Client *client) {
     if (req->command == SET) {
         printf("Executing SET\n");
         handle_set(req, TYPE_STRING, client->fd);
+        notify_watchers(req->args[0]);
         return 0;
     }
     if (req->command == GET) {
@@ -751,6 +767,7 @@ int handle(RespRequest *req, Client *client) {
         return 0; 
     }
     if (req->command == DEL) {
+        notify_watchers(req->args[0]);
         return 0; 
     }
     if (req->command == EXISTS) {
@@ -771,10 +788,19 @@ int handle(RespRequest *req, Client *client) {
     // String & Number specific cmds
     if (req->command == INCR){ 
         handle_incr(req, client->fd);
+        notify_watchers(req->args[0]);
         return 0;
     }
-    if (req->command == DECR)   { return 0; }
-    if (req->command == APPEND) { return 0; }
+    if (req->command == DECR)   { 
+        
+        notify_watchers(req->args[0]);
+        return 0;
+    }
+    if (req->command == APPEND) {
+        
+        notify_watchers(req->args[0]);
+        return 0;
+    }
     if (req->command == STRLEN) { return 0; }
     if (req->command == MGET)   { return 0; }
 
@@ -782,17 +808,24 @@ int handle(RespRequest *req, Client *client) {
     if (req->command == LPUSH) { 
         //TODO: add block for is_queue
         handle_lpush(req, client->fd);
+        notify_watchers(req->args[0]);
         return 0; 
     }
     if (req->command == RPUSH) { 
         handle_rpush(req, client->fd);
+        notify_watchers(req->args[0]);
         return 0;
     }
     if (req->command == LPOP)  { 
-        handle_lpop(req, client->fd);    
+        handle_lpop(req, client->fd);   
+        notify_watchers(req->args[0]); 
         return 0;
     }
-    if (req->command == RPOP)  { return 0; }
+    if (req->command == RPOP)  {
+
+        notify_watchers(req->args[0]);
+        return 0;
+    }
     if (req->command == LRANGE) {
         handle_lrange(req, client->fd);
         return 0;
@@ -807,10 +840,18 @@ int handle(RespRequest *req, Client *client) {
     }
 
     // Hash cmds
-    if (req->command == HSET)    { return 0; }
+    if (req->command == HSET){
+        
+        notify_watchers(req->args[0]);
+        return 0;
+    }
     if (req->command == HGET)    { return 0; }
     if (req->command == HGETALL) { return 0; }
-    if (req->command == HDEL)    { return 0; }
+    if (req->command == HDEL){
+        
+        notify_watchers(req->args[0]);
+        return 0;
+    }
 
     // Sets cmds
     if (req->command == SADD)      { return 0; }
@@ -821,10 +862,12 @@ int handle(RespRequest *req, Client *client) {
     // Sorted sets cmds
     if (req->command == ZADD){
         handle_zadd(req, client->fd);
+        notify_watchers(req->args[0]);
         return 0;
     }
     if (req->command == ZRANK){
         handle_zrank(req, client->fd);
+        notify_watchers(req->args[0]);
         return 0;
     }
     if (req->command == ZRANGE){
@@ -841,10 +884,12 @@ int handle(RespRequest *req, Client *client) {
     }
     if (req->command == ZREM){
         handle_zrem(req, client->fd);
+        notify_watchers(req->args[0]);
         return 0;
     }
     if (req->command == GEOADD){
         handle_geoadd(req, client->fd);
+        notify_watchers(req->args[0]);
         return 0;
     }
     if (req->command == GEOPOS){
@@ -863,6 +908,7 @@ int handle(RespRequest *req, Client *client) {
     // Stream cmds
     if (req->command == XADD){ 
         handle_set(req, TYPE_STREAM, client->fd);
+        notify_watchers(req->args[0]);
         return 0;
     }
     if (req->command == XREAD){ 
