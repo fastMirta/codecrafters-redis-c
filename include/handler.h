@@ -34,6 +34,9 @@ typedef struct Client{
     int is_auth;
     int has_nopass;
     char password[65];
+
+    char **watch_keys;
+    size_t watch_keys_size;
 } Client;
 
 
@@ -54,7 +57,7 @@ typedef struct Channels {
     void *value;
 } Channels;
 
-typedef struct {
+typedef struct RedisConfig {
     int port;
     char *role; 
     char *master_replid; 
@@ -71,9 +74,16 @@ typedef struct {
 
 } RedisConfig;
 
+typedef struct Clients_Watch {
+    char *key;
+    Client *clientList;
+    size_t clientsSize;
+} Clients_Watch;
+
 extern RedisConfig server_config;
 extern Client *clients[MAX_CLIENTS];
 extern Channels *channels[MAX_CLIENTS];
+extern Clients_Watch *watchers[MAX_CLIENTS];
 
 
 

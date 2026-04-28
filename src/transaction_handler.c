@@ -6,6 +6,8 @@
 #include "transaction_handler.h"
 
 
+Clients_Watch *watchers[MAX_CLIENTS];
+
 /**Increments value of given key only if its a number
  * if key doesnt exist creates one with given param and init as 1
  */
@@ -102,5 +104,38 @@ void handle_discard(RespRequest *req, Client *client){
     client->is_queued = 0;
 
     send(client->fd, "+OK\r\n", 5, 0);
+    
+}
+
+
+void handle_watch(RespRequest *req, Client *client){
+    if(req->argc < 1) return;
+
+    for(int i = 0; i < req->argc; i++){
+        char *key = NULL;
+        strcpy(key, req->args[i]);
+
+        client->watch_keys[i] = strdup(key);
+        client->watch_keys_size++;
+
+        //Handles global watchers 
+        int index = hash(key);
+        if(watchers[index] == NULL){
+            watchers[index] = malloc(sizeof(Clients_Watch));
+        }
+        else{
+            free(watchers[index]->clientList);
+            free(watchers[index]->key);
+            watchers[index]->clientsSize = 0;
+        }
+        
+        strcpy(watchers[index]->key, key);
+        watchers[index]->clientList[watchers[index]->clientsSize] = *client;
+        watchers[index]->clientsSize++;
+        
+    }
+
+    send(client->fd, "+OK\r\n", 5, 0);
+
     
 }

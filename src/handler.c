@@ -622,6 +622,11 @@ int handle(RespRequest *req, Client *client) {
         printf("Done discarding\n");
         return 0;
     }
+        if(req->command == WATCH){
+        handle_watch(req, client);
+        printf("Done discarding\n");
+        return 0;
+    }
 
     if(client->is_queued){
         client->requests[client->queuedCommands] = copy_request(req);

@@ -148,6 +148,7 @@ REDIS_CMDS findRedisCmd(char *cmdName) {
     if(strcmp(cmdName, "MULTI") == 0)   return MULTI;
     if(strcmp(cmdName, "EXEC") == 0)    return EXEC;
     if(strcmp(cmdName, "DISCARD") == 0) return DISCARD; 
+    if(strcmp(cmdName, "WATCH") == 0) return WATCH; 
 
     // List cmds (Added real list commands)
     if (strcmp(cmdName, "LPUSH") == 0) return LPUSH;
