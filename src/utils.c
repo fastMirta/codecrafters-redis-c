@@ -168,7 +168,7 @@ Entry *store_getEntry(char *key){
 }
 
 /**Checks if the type (1 of the core type e.g. string, list etc) has values
- * @return 1 for false 0 for true
+ * @return 1 for true 0 for false
 */
 int hasValue(RedisType type, char *key){
     Entry *entry = store_getEntry(key);
@@ -176,34 +176,35 @@ int hasValue(RedisType type, char *key){
     {
         case TYPE_STRING:
             //TODO: implement type string
-            return 0;
+            return 1;
 
         case TYPE_LIST:
             Entry *entry = store_getEntry(key);
             if(entry == NULL || entry->value == NULL){
-                return 1;
+                return 0;
             }
             List *list = (List*)entry->value;
-            printf("list->size < 0) %d\n", list->size < 0);
-            return (list->size > 0) ? 0 : 1;
+            printf("list->size > 0) %d\n", list->size > 0);
+            printf("will return: %d\n", (list->size > 0) ? 1 : 0);
+            return (list->size > 0) ? 1 : 0;
 
         case TYPE_STREAM:
             if(entry == NULL || entry->value == NULL){
-                return 1;
+                return 0;
             }
 
             Stream *stream = (Stream*)entry->value;
-            printf("stream->length < 0 %d\n", stream->length < 0);
-            return (stream->length < 0);
+            printf("stream->length > 0 %d\n", stream->length < 0);
+            return (stream->length > 0);
 
         case TYPE_ZSET:
             if(entry == NULL || entry->value == NULL){
-                return 1;
+                return 0;
             }
 
             ZSet *sortedSet = (ZSet*)entry->value;
             printf("stream->length < 0 %d\n", sortedSet->length < 0);
-            return (sortedSet->length < 0) ? 0 : 1;
+            return (sortedSet->length > 0) ? 1 : 0;
         default:
             break;
     }

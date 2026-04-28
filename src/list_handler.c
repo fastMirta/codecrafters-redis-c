@@ -354,7 +354,7 @@ void handle_rpop(RespRequest *req, int client_fd){
 
 
 void handle_blpop(RespRequest *req, Client *client){
-       if(req->argc < 2) return;
+    if(req->argc < 2) return;
     
     Entry *entry = store_getEntry(req->args[0]);
     
@@ -394,7 +394,7 @@ void handle_endblpop(Client *client){
                     && now >= client->timeout_at){
                 
         
-        if(hasValue(TYPE_LIST, client->waiting_for_key) == 0){
+        if(hasValue(TYPE_LIST, client->waiting_for_key)){
             
             Entry *entry = store_getEntry(client->waiting_for_key);
             List *list = (List*)entry->value;
@@ -412,7 +412,9 @@ void handle_endblpop(Client *client){
         
         client->is_blocked = 0;
         client->is_blpop = 0;
-        free(client->waiting_for_key);
-        client->waiting_for_key = NULL;
+        if(client->waiting_for_key) {
+            free(client->waiting_for_key);
+            client->waiting_for_key = NULL;
+        }
     }
 }
