@@ -1,33 +1,51 @@
-[![progress-banner](https://backend.codecrafters.io/progress/redis/730149a9-98a8-48b7-8418-097870659567)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
+# Redis Clone in C
 
-This is a starting point for C solutions to the
-["Build Your Own Redis" Challenge](https://codecrafters.io/challenges/redis).
+A from-scratch Redis server implementation in C, built as part of the
+[CodeCrafters "Build Your Own Redis" Challenge](https://codecrafters.io/challenges/redis).
 
-In this challenge, you'll build a toy Redis clone that's capable of handling
-basic commands like `PING`, `SET` and `GET`. Along the way we'll learn about
-event loops, the Redis protocol and more.
+## What's implemented
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
+- RESP protocol parser
+- Core commands: `SET`, `GET`, `DEL`, `INCR`, `DECR`, `EXPIRE`, `TTL`, `TYPE`, `KEYS`
+- List commands: `LPUSH`, `RPUSH`, `LPOP`, `RPOP`, `LRANGE`, `LLEN`, `BLPOP`
+- Sorted set commands: `ZADD`, `ZRANK`, `ZRANGE`, `ZCARD`, `ZSCORE`, `ZREM`
+- Geo commands: `GEOADD`, `GEOPOS`, `GEODIST`, `GEOSEARCH`
+- Stream commands: `XADD`, `XREAD`, `XRANGE`
+- Pub/Sub: `SUBSCRIBE`, `PUBLISH`, `UNSUBSCRIBE`
+- Transactions: `MULTI`, `EXEC`, `DISCARD`, `WATCH`, `UNWATCH`
+- Auth: `AUTH`, `ACL`
+- Replication: master/replica handshake, `REPLCONF`, `PSYNC`, `WAIT`
+- RDB persistence: loading keys from `.rdb` files on startup
+- AOF persistence: writing commands to append-only file, replaying on startup
+- Config: `CONFIG GET` for `dir`, `dbfilename`, `appendonly`, `appenddirname`, `appendfilename`, `appendfsync`
 
-# Passing the first stage
-
-The entry point for your Redis implementation is in `src/main.c`. Study and
-uncomment the relevant code, and push your changes to pass the first stage:
+## Running
 
 ```sh
-git commit -am "pass 1st stage" # any msg
-git push origin master
+cmake -B build && cmake --build build
+./your_program.sh
 ```
 
-That's all!
+With options:
+```sh
+./your_program.sh --port 6380 --dir /tmp --dbfilename dump.rdb
+./your_program.sh --appendonly yes --appenddirname mydir --appendfilename myfile.aof
+./your_program.sh --replicaof "127.0.0.1 6379"
+```
 
-# Stage 2 & beyond
+## Project structure
 
-Note: This section is for stages 2 and beyond.
-
-1. Ensure you have `cmake` installed locally
-1. Run `./your_program.sh` to run your Redis server, which is implemented in
-   `src/main.c`.
-1. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+```
+src/
+  main.c              # entry point, event loop, config parsing
+  parser.c            # RESP protocol parser
+  handler.c           # command dispatch, AOF write
+  utils.c             # hash table, store_set/get, stream helpers
+  rdb_handler.c       # RDB file loading, CONFIG GET
+  list_handler.c      # list commands
+  set_handler.c       # sorted set and geo commands
+  transaction_handler.c
+  utility_handler.c   # INFO, REPLCONF, PSYNC, WAIT
+  channels_handler.c  # pub/sub
+  auth_handler.c      # AUTH, ACL
+```
