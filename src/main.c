@@ -103,7 +103,7 @@ void replicaofHandler(int argc, char *argv[]) {
 
 }
 
-/**Creates directory based on configed path */
+/**Creates directory, manifested and .1.incr.aof file based on configed path */
 void create_dir(){
     char path[2048];
     char file_path[2350];
@@ -131,11 +131,12 @@ void create_dir(){
     fclose(file);
     
     snprintf(manifest_file_path, sizeof(manifest_file_path), "%s/%s.manifest", path, server_config.appendfilename);
-    FILE *manifestFile = fopen(manifest_file_path, "a+b");
+    FILE *manifestFile = fopen(manifest_file_path, "w");
     if (manifestFile == NULL) {
         perror("Failed to create AOF file");
         return;
     }
+    fprintf(manifestFile, "file %s.1.incr.aof seq 1 type i\n", server_config.appendfilename);
     fclose(manifestFile);
     
     printf("AOF file created/opened at: %s\n", file_path);
