@@ -106,7 +106,7 @@ void replicaofHandler(int argc, char *argv[]) {
 /**Creates directory based on configed path */
 void create_dir(){
     char path[2048];
-    snprintf(path, sizeof(path), "%s%s", server_config.rdb_directory, server_config.appenddirname);
+    snprintf(path, sizeof(path), "%s/%s", server_config.rdb_directory, server_config.appenddirname);
 
     if (mkdir(path, 0777) == -1) {
         if (errno == EEXIST) {
