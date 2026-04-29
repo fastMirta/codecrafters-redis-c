@@ -387,6 +387,7 @@ void write_to_file(RespRequest *req){
             }
         }
     }
+    fclose(manifestFile);
 
     FILE *aofFile = fopen(server_config.aofFilePath, "a");
     if(aofFile == NULL){
@@ -394,7 +395,7 @@ void write_to_file(RespRequest *req){
         return;
     }
     
-    fprintf(aofFile, "*%d\r\n", req->argc);    
+    fprintf(aofFile, "*%d\r\n", req->argc + 1);    
     fprintf(aofFile, "$%zd\r\n%s\r\n", strlen(cmd_to_string(req->command)), cmd_to_string(req->command));    
     for(int i = 0; i < req->argc; i++){
         fprintf(aofFile, "$%zd\r\n%s\r\n", strlen(req->args[i]), req->args[i]);
