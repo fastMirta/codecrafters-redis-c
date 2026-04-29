@@ -337,7 +337,7 @@ int main(int argc, char *argv[]) {
     server_config.appendfilename[0] = '\0';
     server_config.appendfsync[0] = '\0';
 
-    strcpy(server_config.rdb_directory, "app");
+    strcpy(server_config.rdb_directory, "/app");
     strcpy(server_config.appenddirname, "appendonlydir");
     strcpy(server_config.appendOnly, "no");
     strcpy(server_config.appendfilename, "appendonly.aof");
