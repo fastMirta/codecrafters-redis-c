@@ -131,7 +131,7 @@ void create_dir(){
     fclose(file);
     
     snprintf(manifest_file_path, sizeof(manifest_file_path), "%s/%s.manifest", path, server_config.appendfilename);
-    FILE *manifestFile = fopen(file_path, "a+b");
+    FILE *manifestFile = fopen(manifest_file_path, "a+b");
     if (manifestFile == NULL) {
         perror("Failed to create AOF file");
         return;
