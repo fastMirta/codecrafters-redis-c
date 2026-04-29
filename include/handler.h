@@ -75,7 +75,7 @@ typedef struct RedisConfig {
     //RDB settings
     char rdb_directory[1024];
     char rdb_name[256];
-    char appendOnly[3];
+    char appendOnly[4];
     char appenddirname[1024];
     char appendfilename[256];
     char appendfsync[256];

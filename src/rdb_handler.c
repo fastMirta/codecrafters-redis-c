@@ -42,6 +42,9 @@ void handle_config(RespRequest *req, int client_fd){
             snprintf(appendOnlyMsg, sizeof(appendOnlyMsg), "*2\r\n$10\r\nappendonly\r\n$%zd\r\n%s\r\n", 
              strlen(server_config.appendOnly), server_config.appendOnly);
 
+             printf("Append only msg: %s\n", appendOnlyMsg);
+             printf("server config apo: %s\n", server_config.appendOnly);
+
             send(client_fd, appendOnlyMsg, strlen(appendOnlyMsg), 0);
             return;
         }
@@ -51,7 +54,7 @@ void handle_config(RespRequest *req, int client_fd){
             snprintf(appendDirNameMsg, sizeof(appendDirNameMsg), "*2\r\n$13\r\nappenddirname\r\n$%zd\r\n%s\r\n",
              strlen(server_config.appenddirname), server_config.appenddirname);
 
-            send(client_fd, "*2\r\n$13\r\nappenddirname\r\n$13\r\nappendonlydir\r\n", 44, 0);
+            send(client_fd, appendDirNameMsg, strlen(appendDirNameMsg), 0);
             return;
         }
         
@@ -60,7 +63,7 @@ void handle_config(RespRequest *req, int client_fd){
             snprintf(appendFileNameMsg, sizeof(appendFileNameMsg), "*2\r\n$14\r\nappendfilename\r\n$%zd\r\n%s\r\n",
              strlen(server_config.appendfilename), server_config.appendfilename);
 
-            send(client_fd, "*2\r\n$14\r\nappendfilename\r\n$14\r\nappendonly.aof\r\n", 46, 0);
+            send(client_fd, appendFileNameMsg, strlen(appendFileNameMsg) , 0);
             return;
         }
 
@@ -69,7 +72,7 @@ void handle_config(RespRequest *req, int client_fd){
             snprintf(appendFsyncMsg, sizeof(appendFsyncMsg), "*2\r\n$11\r\nappendfsync\r\n$%zd\r\n%s\r\n", 
              strlen(server_config.appendfsync), server_config.appendfsync);
 
-            send(client_fd, "*2\r\n$11\r\nappendfsync\r\n$8\r\neverysec\r\n", 36, 0);
+            send(client_fd, appendFsyncMsg, strlen(appendFsyncMsg), 0);
             return;
         }
     }

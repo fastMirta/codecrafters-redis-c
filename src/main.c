@@ -103,7 +103,10 @@ void replicaofHandler(int argc, char *argv[]) {
 
 void rdb_config_handler(int argc, char *argv[]){
     for (int i = 0; i < argc; i++) {
-        if(argv[i] && strcmp(argv[i], "--dir") == 0 && i + 1 < argc){
+        // printf("argv[%d]: = %s\n", i, argv[i]);
+        // printf("argv[%d]: = %s\n", i+1, argv[i+1]);
+
+        if(strcmp(argv[i], "--dir") == 0 && i + 1 < argc){
             strcpy(server_config.rdb_directory, argv[i + 1]);
         }
 
@@ -112,6 +115,8 @@ void rdb_config_handler(int argc, char *argv[]){
         }
 
         if(strcmp(argv[i], "--appendonly") == 0 && i + 1 < argc){
+            printf("argv[%d]: = %s\n", i, argv[i]);
+            printf("argv[%d]: = %s\n", i+1, argv[i+1]);
             strcpy(server_config.appendOnly, argv[i + 1]);
         }
         
