@@ -372,6 +372,10 @@ void handle_unknown(RespRequest *req, int client_fd){
 }
 
 void write_to_file(RespRequest *req){
+    if (strcmp(server_config.appendOnly, "yes") != 0) {
+        return;
+    }
+
     FILE *manifestFile = fopen(server_config.manifestFilePath, "r");
     char line[1024];
     char active_aof_name[256];
