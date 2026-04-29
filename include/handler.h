@@ -106,5 +106,6 @@ void handle_type(RespRequest *req, int client_fd);
 void handle_unknown(RespRequest *req, int client_fd);
 int handle(RespRequest *req, Client *client);
 void printRequest(RespRequest *req);
+char* to_upper(char *stringToUpper);
 
 #endif

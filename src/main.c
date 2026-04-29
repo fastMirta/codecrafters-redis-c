@@ -151,8 +151,7 @@ void rdb_config_handler(int argc, char *argv[]){
         }
     }
     
-    toUpper(server_config.appendOnly);
-    if(strcmp(server_config.appendOnly, "YES") == 0){
+    if(strcmp(to_upper(server_config.appendOnly), "YES") == 0){
         create_dir();
     }
 
