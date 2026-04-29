@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
@@ -101,6 +103,22 @@ void replicaofHandler(int argc, char *argv[]) {
 
 }
 
+/**Creates directory based on configed path */
+void create_dir(){
+    char path[2048];
+    snprintf(path, sizeof(path), "%s%s", server_config.rdb_directory, server_config.appenddirname);
+
+    if (mkdir(path, 0777) == -1) {
+        if (errno == EEXIST) {
+            printf("Directory already exists: %s\n", path);
+        } else {
+            perror("Error creating directory");
+        }
+    } else {
+        printf("Directory created successfully: %s\n", path);
+    }
+}
+
 void rdb_config_handler(int argc, char *argv[]){
     for (int i = 0; i < argc; i++) {
         // printf("argv[%d]: = %s\n", i, argv[i]);
@@ -132,7 +150,15 @@ void rdb_config_handler(int argc, char *argv[]){
             strcpy(server_config.appendfsync, argv[i + 1]);
         }
     }
+    
+    toUpper(server_config.appendOnly);
+    if(strcmp(server_config.appendOnly, "YES") == 0){
+        create_dir();
+    }
+
     printf("found both?: name: %s, path: %s\n", server_config.rdb_name, server_config.rdb_directory);
+
+
 }
 
 int validate_server_response(int stepLevel, char *serversResponse){
