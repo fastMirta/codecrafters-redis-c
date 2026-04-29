@@ -106,6 +106,9 @@ void replicaofHandler(int argc, char *argv[]) {
 /**Creates directory based on configed path */
 void create_dir(){
     char path[2048];
+    char file_path[2048];
+
+
     snprintf(path, sizeof(path), "%s/%s", server_config.rdb_directory, server_config.appenddirname);
 
     if (mkdir(path, 0777) == -1) {
@@ -117,6 +120,17 @@ void create_dir(){
     } else {
         printf("Directory created successfully: %s\n", path);
     }
+
+    snprintf(file_path, sizeof(file_path), "%s/%s.1.incr.aof", path, server_config.appendfilename);
+
+    FILE *f = fopen(file_path, "a+b");
+    if (f == NULL) {
+        perror("Failed to create AOF file");
+        return;
+    }
+    
+    printf("AOF file created/opened at: %s\n", file_path);
+    fclose(f);
 }
 
 void rdb_config_handler(int argc, char *argv[]){
