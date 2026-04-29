@@ -388,15 +388,15 @@ void write_to_file(RespRequest *req){
         }
     }
 
-    FILE *aofFile = fopen(server_config.aofFilePath, "w");
+    FILE *aofFile = fopen(server_config.aofFilePath, "a");
     if(aofFile == NULL){
         printf("Aof file does not exist\n");
         return;
     }
     
-    fprintf(manifestFile, "*%d\r\n", req->argc);    
+    fprintf(server_config.aofFilePath, "*%d\r\n", req->argc);    
     for(int i = 0; i < req->argc; i++){
-        fprintf(manifestFile, "$%zd\r\n%s\r\n", strlen(req->args[i]), req->args[i]);
+        fprintf(server_config.aofFilePath, "$%zd\r\n%s\r\n", strlen(req->args[i]), req->args[i]);
         printf("$%zd\r\n%s\r\n", strlen(req->args[i]), req->args[i]);
     }
     
