@@ -394,9 +394,9 @@ void write_to_file(RespRequest *req){
         return;
     }
     
-    fprintf(server_config.aofFilePath, "*%d\r\n", req->argc);    
+    fprintf(aofFile, "*%d\r\n", req->argc);    
     for(int i = 0; i < req->argc; i++){
-        fprintf(server_config.aofFilePath, "$%zd\r\n%s\r\n", strlen(req->args[i]), req->args[i]);
+        fprintf(aofFile, "$%zd\r\n%s\r\n", strlen(req->args[i]), req->args[i]);
         printf("$%zd\r\n%s\r\n", strlen(req->args[i]), req->args[i]);
     }
     
