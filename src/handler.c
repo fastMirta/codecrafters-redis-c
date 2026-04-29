@@ -371,6 +371,38 @@ void handle_unknown(RespRequest *req, int client_fd){
     //TODO: create logic for unknown cmd
 }
 
+void write_to_file(RespRequest *req){
+    FILE *manifestFile = fopen(server_config.manifestFilePath, "r");
+    char line[1024];
+    char active_aof_name[256];
+
+    while (fgets(line, sizeof(line), manifestFile)) {
+        if (strstr(line, "type i") != NULL) {
+            
+            if (sscanf(line, "file %s seq", active_aof_name) == 1) {
+                printf("Success! The filename is: %s\n", active_aof_name);
+                
+                strcpy(server_config.appendfilename, active_aof_name);
+                break; 
+            }
+        }
+    }
+
+    FILE *aofFile = fopen(server_config.aofFilePath, "w");
+    if(aofFile == NULL){
+        printf("Aof file does not exist\n");
+        return;
+    }
+    
+    fprintf(manifestFile, "*%d\r\n", req->argc);    
+    for(int i = 0; i < req->argc; i++){
+        fprintf(manifestFile, "$%zd\r\n%s\r\n", strlen(req->args[i]), req->args[i]);
+        printf("$%zd\r\n%s\r\n", strlen(req->args[i]), req->args[i]);
+    }
+    
+    fclose(aofFile);
+}
+
 void printRequest(RespRequest *req){
     printf("PRINTING REQUESTTT\n");
     printf("command: %d\n", req->command);
@@ -767,6 +799,7 @@ int handle(RespRequest *req, Client *client) {
         printf("Executing SET\n");
         handle_set(req, TYPE_STRING, client->fd);
         notify_watchers(req->args[0]);
+        write_to_file(req);
         return 0;
     }
     if (req->command == GET) {
@@ -776,6 +809,7 @@ int handle(RespRequest *req, Client *client) {
     }
     if (req->command == DEL) {
         notify_watchers(req->args[0]);
+        write_to_file(req);
         return 0; 
     }
     if (req->command == EXISTS) {
@@ -797,16 +831,19 @@ int handle(RespRequest *req, Client *client) {
     if (req->command == INCR){ 
         handle_incr(req, client->fd);
         notify_watchers(req->args[0]);
+        write_to_file(req);
         return 0;
     }
     if (req->command == DECR)   { 
         
         notify_watchers(req->args[0]);
+        write_to_file(req);
         return 0;
     }
     if (req->command == APPEND) {
         
         notify_watchers(req->args[0]);
+        write_to_file(req);
         return 0;
     }
     if (req->command == STRLEN) { return 0; }
@@ -817,21 +854,25 @@ int handle(RespRequest *req, Client *client) {
         //TODO: add block for is_queue
         handle_lpush(req, client->fd);
         notify_watchers(req->args[0]);
+        write_to_file(req);
         return 0; 
     }
     if (req->command == RPUSH) { 
         handle_rpush(req, client->fd);
         notify_watchers(req->args[0]);
+        write_to_file(req);
         return 0;
     }
     if (req->command == LPOP)  { 
         handle_lpop(req, client->fd);   
         notify_watchers(req->args[0]); 
+        write_to_file(req);
         return 0;
     }
     if (req->command == RPOP)  {
 
         notify_watchers(req->args[0]);
+        write_to_file(req);
         return 0;
     }
     if (req->command == LRANGE) {
@@ -851,6 +892,7 @@ int handle(RespRequest *req, Client *client) {
     if (req->command == HSET){
         
         notify_watchers(req->args[0]);
+        write_to_file(req);
         return 0;
     }
     if (req->command == HGET)    { return 0; }
@@ -858,6 +900,7 @@ int handle(RespRequest *req, Client *client) {
     if (req->command == HDEL){
         
         notify_watchers(req->args[0]);
+        write_to_file(req);
         return 0;
     }
 
@@ -871,6 +914,7 @@ int handle(RespRequest *req, Client *client) {
     if (req->command == ZADD){
         handle_zadd(req, client->fd);
         notify_watchers(req->args[0]);
+        write_to_file(req);
         return 0;
     }
     if (req->command == ZRANK){
@@ -893,11 +937,13 @@ int handle(RespRequest *req, Client *client) {
     if (req->command == ZREM){
         handle_zrem(req, client->fd);
         notify_watchers(req->args[0]);
+        write_to_file(req);
         return 0;
     }
     if (req->command == GEOADD){
         handle_geoadd(req, client->fd);
         notify_watchers(req->args[0]);
+        write_to_file(req);
         return 0;
     }
     if (req->command == GEOPOS){
@@ -917,6 +963,7 @@ int handle(RespRequest *req, Client *client) {
     if (req->command == XADD){ 
         handle_set(req, TYPE_STREAM, client->fd);
         notify_watchers(req->args[0]);
+        write_to_file(req);
         return 0;
     }
     if (req->command == XREAD){ 

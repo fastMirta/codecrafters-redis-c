@@ -141,6 +141,9 @@ void create_dir(){
     
     printf("AOF file created/opened at: %s\n", file_path);
     
+
+    strcpy(server_config.manifestFilePath, manifest_file_path);
+    strcpy(server_config.aofFilePath, file_path);
 }
 
 void rdb_config_handler(int argc, char *argv[]){

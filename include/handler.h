@@ -79,6 +79,8 @@ typedef struct RedisConfig {
     char appenddirname[1024];
     char appendfilename[256];
     char appendfsync[256];
+    char manifestFilePath[2350];
+    char aofFilePath[2350];
 
 } RedisConfig;
 
