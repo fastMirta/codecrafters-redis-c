@@ -71,8 +71,14 @@ typedef struct RedisConfig {
     int master_fd;
     int wantedReplicas;
     int wait_client_fd;
+
+    //RDB settings
     char rdb_directory[1024];
     char rdb_name[256];
+    char appendOnly[3];
+    char appenddirname[1024];
+    char appendfilename[256];
+    char appendfsync[256];
 
 } RedisConfig;
 

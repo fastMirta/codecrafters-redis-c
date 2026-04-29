@@ -38,21 +38,37 @@ void handle_config(RespRequest *req, int client_fd){
 
         if(strcmp(req->args[0], "APPENDONLY") == 0){
             //TODO: implement logic for appendonly
-            send(client_fd, "*2\r\n$10\r\nappendonly\r\n$2\r\nno\r\n", 29, 0);
+            char appendOnlyMsg[1024];
+            snprintf(appendOnlyMsg, sizeof(appendOnlyMsg), "*2\r\n$10\r\nappendonly\r\n$%zd\r\n%s\r\n", 
+             strlen(server_config.appendOnly), server_config.appendOnly);
+
+            send(client_fd, appendOnlyMsg, strlen(appendOnlyMsg), 0);
             return;
         }
 
         if(strcmp(req->args[0], "APPENDDIRNAME") == 0){
+            char appendDirNameMsg[2048];
+            snprintf(appendDirNameMsg, sizeof(appendDirNameMsg), "*2\r\n$13\r\nappenddirname\r\n$%zd\r\n%s\r\n",
+             strlen(server_config.appenddirname), server_config.appenddirname);
+
             send(client_fd, "*2\r\n$13\r\nappenddirname\r\n$13\r\nappendonlydir\r\n", 44, 0);
             return;
         }
         
         if(strcmp(req->args[0], "APPENDFILENAME") == 0){
+            char appendFileNameMsg[1024];
+            snprintf(appendFileNameMsg, sizeof(appendFileNameMsg), "*2\r\n$14\r\nappendfilename\r\n$%zd\r\n%s\r\n",
+             strlen(server_config.appendfilename), server_config.appendfilename);
+
             send(client_fd, "*2\r\n$14\r\nappendfilename\r\n$14\r\nappendonly.aof\r\n", 46, 0);
             return;
         }
 
         if(strcmp(req->args[0], "APPENDFSYNC") == 0){
+            char appendFsyncMsg[1024];
+            snprintf(appendFsyncMsg, sizeof(appendFsyncMsg), "*2\r\n$11\r\nappendfsync\r\n$%zd\r\n%s\r\n", 
+             strlen(server_config.appendfsync), server_config.appendfsync);
+
             send(client_fd, "*2\r\n$11\r\nappendfsync\r\n$8\r\neverysec\r\n", 36, 0);
             return;
         }

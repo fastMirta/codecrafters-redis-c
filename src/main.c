@@ -110,6 +110,22 @@ void rdb_config_handler(int argc, char *argv[]){
         if(strcmp(argv[i], "--dbfilename") == 0 && i + 1 < argc){
             strcpy(server_config.rdb_name, argv[i + 1]);
         }
+
+        if(strcmp(argv[i], "--appendonly") == 0 && i + 1 < argc){
+            strcpy(server_config.appendOnly, argv[i + 1]);
+        }
+        
+        if(strcmp(argv[i], "--appenddirname") == 0 && i + 1 < argc){
+            strcpy(server_config.appenddirname, argv[i + 1]);
+        }
+
+        if(strcmp(argv[i], "--appendfilename") == 0 && i + 1 < argc){
+            strcpy(server_config.appendfilename, argv[i + 1]);
+        }
+
+        if(strcmp(argv[i], "--appendfsync") == 0 && i + 1 < argc){
+            strcpy(server_config.appendfsync, argv[i + 1]);
+        }
     }
     printf("found both?: name: %s, path: %s\n", server_config.rdb_name, server_config.rdb_directory);
 }
@@ -308,9 +324,13 @@ int main(int argc, char *argv[]) {
     server_config.master_replid = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb";
     server_config.master_repl_offset = 0;
     server_config.master_fd = -1;
+
     server_config.rdb_directory[0] = '\0';
-    strcpy(server_config.rdb_directory, "/app");
     server_config.rdb_name[0] = '\0';
+    server_config.appendOnly[0] = '\0';
+    server_config.appenddirname[0] = '\0';
+    server_config.appendfilename[0] = '\0';
+    server_config.appendfsync[0] = '\0';
 
     listen(server_fd, 5);
 
