@@ -159,13 +159,19 @@ Entry *store_getEntry(char *key){
     printf("key in getEntry: %s\n", key);
     int index = hash(key);
     printf("Index: %d\n", index);
-    if (table[index] == NULL){
-        printf("Value doesnt exist in getEntry\n");
-        return NULL;
+
+    Entry *entry = table[index];
+    while (entry != NULL) {
+        if (strcmp(entry->key, key) == 0)
+            return entry;
+        entry = entry->next;
     }
-        
-    return table[index];
+    return NULL;
 }
+
+
+
+
 
 /**Checks if the type (1 of the core type e.g. string, list etc) has values
  * @return 1 for true 0 for false
