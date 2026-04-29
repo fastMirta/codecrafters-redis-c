@@ -178,12 +178,66 @@ void rdb_config_handler(int argc, char *argv[]){
         }
     }
     
-    if(strcmp(to_upper(server_config.appendOnly), "YES") == 0){
+    struct stat st = {0};
+    char path[2048];
+
+    snprintf(path, sizeof(path), "%s/%s", server_config.rdb_directory, server_config.appenddirname);
+    
+    
+    if(strcmp(to_upper(server_config.appendOnly), "YES") == 0 && stat(path, &st) != 0){
         create_dir();
+    }
+    else if(strcmp(to_upper(server_config.appendOnly), "YES") == 0 && stat(path, &st) == 0){
+        /*snprintf(path, sizeof(path), "%s/%s/%s.manifest", 
+      server_config.rdb_directory, server_config.appenddirname, server_config.appendfilename);*/
+        snprintf(server_config.manifestFilePath, sizeof(server_config.manifestFilePath), "%s/%s.manifest", path, server_config.appendfilename);
+        FILE *manifestFile = fopen(server_config.manifestFilePath, "r");
+        FILE *aofFile;
+        char line[1024];
+        char active_aof_name[256];
+
+        while (fgets(line, sizeof(line), manifestFile)) {
+            if (strstr(line, "type i") != NULL) {
+                
+                if (sscanf(line, "file %255s seq", active_aof_name) == 1) {
+                    printf("Success! The filename is: %s\n", active_aof_name);
+                    
+                     strcpy(server_config.appendfilename, active_aof_name);
+                    break; 
+                }
+            }
+        }
+        fclose(manifestFile);
+        snprintf(server_config.aofFilePath, sizeof(server_config.aofFilePath), 
+                "%s/%s", path, active_aof_name);
+        aofFile = fopen(server_config.aofFilePath, "r");
+
+        fseek(aofFile, 0, SEEK_END);
+        long fileSize = ftell(aofFile);
+        rewind(aofFile);
+
+        char *aofBuf = malloc(fileSize + 1);
+        fread(aofBuf, 1, fileSize, aofFile);
+        aofBuf[fileSize] = '\0';
+        fclose(aofFile);
+
+        char *ptr = aofBuf;
+        char *end = aofBuf + fileSize;
+        while (ptr < end) {
+            while (ptr < end && *ptr != '*') ptr++;
+            if (ptr >= end) break;
+            char *before = ptr;
+            RespRequest req = {0};
+            Client fakeClient = {.is_master = 1, .has_nopass = 1};
+            if (parse(&ptr, &req) != 0) { ptr = before + 1; continue; }
+            handle(&req, &fakeClient);
+            for (int a = 0; a < req.argc; a++) free(req.args[a]);
+        }
+        free(aofBuf);
+
     }
 
     printf("found both?: name: %s, path: %s\n", server_config.rdb_name, server_config.rdb_directory);
-
 
 }
 

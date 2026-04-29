@@ -372,7 +372,7 @@ void handle_unknown(RespRequest *req, int client_fd){
 }
 
 void write_to_file(RespRequest *req){
-    if (strcmp(server_config.appendOnly, "yes") != 0) {
+    if (strcmp(to_upper(server_config.appendOnly), "YES") != 0) {
         return;
     }
 
